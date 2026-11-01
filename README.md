@@ -70,7 +70,7 @@ Connect to free or premium AI providers with automatic instant failover:
 
 ### 1. Clone & Set Up Environment
 ```bash
-git clone https://github.com/Raiyan/NEXUS-AI-Companion.git
+git clone https://github.com/kaziraiyan0123-hub/NEXUS-AI-Companion.git
 cd NEXUS-AI-Companion
 
 # Create and activate virtual environment
