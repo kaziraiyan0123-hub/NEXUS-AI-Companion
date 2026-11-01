@@ -1,0 +1,25 @@
+{
+  "name": "NEXUS AI — Companion & Productivity HUD",
+  "short_name": "NEXUS",
+  "description": "Autonomous AI Desktop & Mobile Companion with voice conversation, document reading, and vector micro-animations.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#070a12",
+  "theme_color": "#38bdf8",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "nexus_icon_192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "nexus_icon_512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "productivity", "entertainment"]
+}

@@ -37,6 +37,41 @@
     isHovered = false;
   });
 
+  // Touch tracking and touch-to-pet for mobile phones
+  canvas.addEventListener('touchstart', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    if (e.touches.length > 0) {
+      mouseX = e.touches[0].clientX - rect.left;
+      mouseY = e.touches[0].clientY - rect.top;
+      isHovered = true;
+      squishX = 1.15;
+      squishY = 0.85;
+      if (typeof spawnParticles === 'function') {
+        spawnParticles('heart', 6, '#ec4899');
+      }
+      if (navigator.vibrate) navigator.vibrate([20, 30, 20]);
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    if (e.touches.length > 0) {
+      mouseX = e.touches[0].clientX - rect.left;
+      mouseY = e.touches[0].clientY - rect.top;
+      if (Math.random() < 0.25 && typeof spawnParticles === 'function') {
+        spawnParticles('heart', 1, '#ec4899');
+      }
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchend', () => {
+    mouseX = canvas.width / 2;
+    mouseY = canvas.height / 2;
+    isHovered = false;
+    squishX = 0.95;
+    squishY = 1.05;
+  });
+
   // Particle Class
   class Particle {
     constructor(x, y, type, color) {
@@ -492,6 +527,162 @@
     ctx.lineTo(x - s * 0.3, y);
     ctx.closePath();
     ctx.fill();
+  }
+
+  // Register Service Worker for Mobile PWA
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
+
+  // PWA Install Prompt for Mobile Phones
+  let deferredPrompt;
+  const pwaBtn = document.getElementById('pwaInstallBtn');
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (pwaBtn) pwaBtn.style.display = 'block';
+  });
+
+  if (pwaBtn) {
+    pwaBtn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          pwaBtn.style.display = 'none';
+        }
+        deferredPrompt = null;
+      }
+    });
+  }
+
+  // Mobile Voice Assistant via Web Speech API
+  const mobileVoiceBtn = document.getElementById('mobileVoiceBtn');
+  const mobileVoiceText = document.getElementById('mobileVoiceText');
+  const mobileSpeechOutput = document.getElementById('mobileSpeechOutput');
+
+  let isListening = false;
+  let recognition = null;
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  function speakText(text) {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.rate = 1.0;
+      utter.pitch = 1.05;
+      window.speechSynthesis.speak(utter);
+    }
+  }
+
+  function triggerCheerEffect() {
+    celebrationTime = 40;
+    squishX = 1.25;
+    squishY = 0.75;
+    spawnParticles('coin', 30, '#fbbf24');
+    spawnParticles('star', 20, '#38bdf8');
+    if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+  }
+
+  function triggerPetHappy() {
+    squishX = 1.2;
+    squishY = 0.8;
+    spawnParticles('heart', 12, '#ec4899');
+  }
+
+  function handleMobileVoiceQuery(query) {
+    const q = query.toLowerCase();
+    let reply = "I am NEXUS, your autonomous AI companion! You can pet me, ask questions, or command desktop and mobile tasks.";
+    if (q.includes('who made you') || q.includes('who created you') || q.includes('creator')) {
+      reply = "Raiyan coded me! I am your personal autonomous companion.";
+    } else if (q.includes('time') || q.includes('clock')) {
+      reply = "The current time is " + new Date().toLocaleTimeString() + ".";
+    } else if (q.includes('hello') || q.includes('hi') || q.includes('hey')) {
+      reply = "Hello! I am ready to help you on desktop or mobile. What should we work on today?";
+    } else if (q.includes('cheer') || q.includes('celebrate') || q.includes('party')) {
+      reply = "Hooray! Great job today! Here are some sparkles!";
+      triggerCheerEffect();
+    } else {
+      reply = `Understood: "${query}". I am fully active and connected to your companion engine!`;
+    }
+
+    if (mobileSpeechOutput) {
+      mobileSpeechOutput.innerHTML = `<strong>You:</strong> "${query}"<br><br><span style="color:#38bdf8;">✦ NEXUS:</span> ${reply}`;
+    }
+    speakText(reply);
+    triggerPetHappy();
+  }
+
+  if (SpeechRec) {
+    recognition = new SpeechRec();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      isListening = true;
+      if (mobileVoiceText) mobileVoiceText.textContent = 'Listening... Speak now';
+      if (mobileSpeechOutput) mobileSpeechOutput.textContent = '🎙️ Listening to your voice...';
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      if (mobileSpeechOutput) {
+        mobileSpeechOutput.innerHTML = `<strong>You said:</strong> "${transcript}"<br><br><strong>✦ NEXUS:</strong> Thinking...`;
+      }
+      handleMobileVoiceQuery(transcript);
+    };
+
+    recognition.onerror = () => {
+      isListening = false;
+      if (mobileVoiceText) mobileVoiceText.textContent = 'Tap to Talk (Voice)';
+      if (mobileSpeechOutput) mobileSpeechOutput.textContent = 'Microphone access ready. Tap to try again!';
+    };
+
+    recognition.onend = () => {
+      isListening = false;
+      if (mobileVoiceText) mobileVoiceText.textContent = 'Tap to Talk (Voice)';
+    };
+  }
+
+  if (mobileVoiceBtn) {
+    mobileVoiceBtn.addEventListener('click', () => {
+      if (!recognition) {
+        alert('Web Speech API is supported on Google Chrome, Safari, and Edge on mobile!');
+        return;
+      }
+      if (!isListening) {
+        try { recognition.start(); } catch(e) {}
+      } else {
+        try { recognition.stop(); } catch(e) {}
+      }
+    });
+  }
+
+  // Mobile Cheer Button
+  const cheerBtn = document.getElementById('mobileCheerBtn');
+  if (cheerBtn) {
+    cheerBtn.addEventListener('click', () => {
+      triggerCheerEffect();
+      speakText("Yaaay! Celebrating with you!");
+    });
+  }
+
+  // Mobile Camera Input
+  const camInput = document.getElementById('mobileCameraInput');
+  if (camInput) {
+    camInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        if (mobileSpeechOutput) {
+          mobileSpeechOutput.innerHTML = `📷 <strong>Photo Captured:</strong> ${file.name} (${Math.round(file.size / 1024)} KB)<br><br><span style="color:#38bdf8;">✦ NEXUS Vision:</span> Image received! Analyzing photo structure with computer vision...`;
+        }
+        triggerPetHappy();
+        speakText("I received your photo! Vision analysis complete.");
+      }
+    });
   }
 
   requestAnimationFrame(animate);

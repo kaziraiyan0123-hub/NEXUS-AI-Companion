@@ -35,7 +35,13 @@ def setup_logging():
         except Exception:
             pass
 
-    log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nexus.log")
+    appdata = os.environ.get("APPDATA")
+    if appdata:
+        log_dir = os.path.join(appdata, "NEXUS")
+    else:
+        log_dir = os.path.dirname(os.path.abspath(__file__))
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, "nexus.log")
     logging.basicConfig(
         level=logging.INFO,
         format="[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s",
