@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Autonomous AI Desktop Companion & Command Center</title>
+  <meta name="description" content="NEXUS is an intelligent, animated AI desktop companion and productivity HUD for Windows. Created and coded by Raiyan.">
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Ambient background glow -->
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+
+  <!-- Header / Navigation -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="logo">
+        <span class="logo-spark">✦</span>
+        <span class="logo-text">NEXUS</span>
+        <span class="badge">v2.5 PRO</span>
+      </div>
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#demo">Live Pet Demo</a>
+        <a href="#automation">Desktop Actions</a>
+        <a href="#docs">Documents</a>
+        <a href="https://github.com/Raiyan/NEXUS-AI-Companion" class="github-btn" target="_blank">
+          <svg height="18" width="18" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+          </svg>
+          GitHub
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section with Interactive Canvas Demo -->
+  <section class="hero-section">
+    <div class="hero-content">
+      <div class="author-tag">
+        <span>Engineered & Coded by Raiyan</span>
+      </div>
+      <h1 class="hero-title">Your Autonomous AI<br><span class="gradient-text">Desktop Companion</span></h1>
+      <p class="hero-sub">
+        A real-time animated desktop companion for Windows with instant document & PDF reading, hands-free voice conversations, and safe desktop automation.
+      </p>
+      <div class="hero-actions">
+        <a href="#download" class="btn btn-primary">
+          <span>⚡ Download for Windows</span>
+        </a>
+        <a href="#demo" class="btn btn-secondary">
+          <span>🎮 Try Interactive Pet</span>
+        </a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat-item">
+          <strong>100% Free</strong>
+          <span>Zero API Cost</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <strong>60 FPS</strong>
+          <span>Vector Physics</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <strong>66 / 66</strong>
+          <span>Unit Tests Passing</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-visual" id="demo">
+      <div class="canvas-card">
+        <div class="canvas-header">
+          <span class="status-indicator"></span>
+          <span class="canvas-title">NEXUS Interactive Simulator</span>
+          <div class="skin-selector">
+            <button class="skin-btn active" data-skin="habibi">👑 Royal Habibi</button>
+            <button class="skin-btn" data-skin="cyber">✦ Neo Cyber</button>
+          </div>
+        </div>
+        <canvas id="petCanvas" width="360" height="360"></canvas>
+        <div class="canvas-controls">
+          <button id="petButton" class="interact-btn">💖 Pet NEXUS (+5 XP)</button>
+          <button id="highFiveButton" class="interact-btn">🙌 High-Five (+10 XP)</button>
+          <button id="cheerButton" class="interact-btn">⭐ Cheer</button>
+        </div>
+        <div class="canvas-hint">Move your mouse to watch NEXUS track your cursor in real time.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Feature Grid -->
+  <section class="features-section" id="features">
+    <div class="section-header">
+      <h2 class="section-title">Built For Deep Intelligence & Productivity</h2>
+      <p class="section-sub">Experience what a true desktop companion can do beyond basic browser chatbots.</p>
+    </div>
+
+    <div class="features-grid">
+      <!-- Feature 1: Document Intelligence -->
+      <div class="feature-card">
+        <div class="card-icon">📄</div>
+        <h3>Deep Document & PDF Analysis</h3>
+        <p>Drop any PDF, Word doc, code file, or spreadsheet directly into NEXUS. Powered by <code>pypdf</code>, it reads every page and provides authoritative summaries and Q&A.</p>
+        <ul class="feature-list">
+          <li>✓ Multi-page PDF text & table extraction</li>
+          <li>✓ Code analysis with syntax detection</li>
+          <li>✓ Excel & CSV spreadsheet parsing</li>
+        </ul>
+      </div>
+
+      <!-- Feature 2: Safe Desktop Control -->
+      <div class="feature-card" id="automation">
+        <div class="card-icon">⚡</div>
+        <h3>Safe Desktop Automation</h3>
+        <p>Ask NEXUS to perform everyday operations on your PC under an absolute permission-first security model with zero arbitrary code execution.</p>
+        <ul class="feature-list">
+          <li>✓ Instant system clock & calendar lookups</li>
+          <li>✓ Open YouTube, GitHub, ChatGPT, or any URL</li>
+          <li>✓ Search Google, lock PC, & audio controls</li>
+        </ul>
+      </div>
+
+      <!-- Feature 3: Natural Human Voices -->
+      <div class="feature-card">
+        <div class="card-icon">🎙️</div>
+        <h3>Realistic Neural Speech</h3>
+        <p>No robotic voices. NEXUS features studio-grade Edge Neural and ElevenLabs human voices with intelligent spoken summary highlights.</p>
+        <ul class="feature-list">
+          <li>✓ 100% Free Edge Neural voices (Andrew, Rachel)</li>
+          <li>✓ Optional ElevenLabs high-realism API</li>
+          <li>✓ Lip-sync animated mouth equalizer</li>
+        </ul>
+      </div>
+
+      <!-- Feature 4: Multi-Model AI Brain -->
+      <div class="feature-card">
+        <div class="card-icon">🧠</div>
+        <h3>Multi-Model Resilient Brain</h3>
+        <p>Connect to the world's leading AI engines with automatic failover so your companion never goes offline or hits rate limits.</p>
+        <ul class="feature-list">
+          <li>✓ Google Gemini (2.5 Flash, 2.5 Pro, 2.0 Flash)</li>
+          <li>✓ Groq Cloud (Llama 3.3 70B, DeepSeek R1)</li>
+          <li>✓ Claude 3.7 Sonnet & OpenAI GPT-4o</li>
+        </ul>
+      </div>
+
+      <!-- Feature 5: Vector Archetypes -->
+      <div class="feature-card">
+        <div class="card-icon">👑</div>
+        <h3>8 Canonical Character Skins</h3>
+        <p>Including the restored Royal Habibi of Dubai featuring luxury gold aviator shades, flowing silk ghutra headdress, and gold dirham coin particles.</p>
+        <ul class="feature-list">
+          <li>✓ Royal Habibi, Neo Cyber, Quantum Fox</li>
+          <li>✓ Chrono Mecha, Nebula Cat, Solar Phoenix</li>
+          <li>✓ Obsidian Phantom & Matrix Emerald</li>
+        </ul>
+      </div>
+
+      <!-- Feature 6: Absolute Security -->
+      <div class="feature-card">
+        <div class="card-icon">🛡️</div>
+        <h3>Absolute Permission Gating</h3>
+        <p>Every computer action is categorized into 3 permission levels with interactive verification dialogs and a global Emergency Stop button.</p>
+        <ul class="feature-list">
+          <li>✓ Core Windows system process protection</li>
+          <li>✓ Zero destructive script execution</li>
+          <li>✓ Full encrypted Windows DPAPI vault</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Terminal Simulation -->
+  <section class="terminal-section" id="docs">
+    <div class="section-header">
+      <h2 class="section-title">Natural Conversation & Actions</h2>
+      <p class="section-sub">Speak or type naturally. Here is how NEXUS responds.</p>
+    </div>
+
+    <div class="terminal-window">
+      <div class="terminal-titlebar">
+        <div class="dots">
+          <span class="dot red"></span>
+          <span class="dot yellow"></span>
+          <span class="dot green"></span>
+        </div>
+        <span class="term-title">NEXUS HUD Terminal — Session Active</span>
+      </div>
+      <div class="terminal-body">
+        <div class="term-line user">
+          <span class="prompt">User:</span> What time is it right now?
+        </div>
+        <div class="term-line nexus">
+          <span class="prompt-nexus">✦ NEXUS:</span> It is 11:45 AM on Sunday, November 1st. (Local Time)
+        </div>
+        <div class="term-line user">
+          <span class="prompt">User:</span> Open YouTube and search for quantum computing tutorials
+        </div>
+        <div class="term-line nexus">
+          <span class="prompt-nexus">✦ NEXUS:</span> Opened YouTube and searched for 'quantum computing tutorials' in your browser.
+        </div>
+        <div class="term-line user">
+          <span class="prompt">User:</span> [Attached: Chapter_4_Ethics.pdf] Summarize the core findings
+        </div>
+        <div class="term-line nexus">
+          <span class="prompt-nexus">✦ NEXUS:</span> 📄 <strong>PDF Analysis: Chapter 4 (24 pages, ~8,400 words)</strong><br>
+          • <strong>Key Theme:</strong> Corporate social responsibility and ethical stakeholder frameworks.<br>
+          • <strong>Section 4.2:</strong> Four-tier pyramid of responsibility (Economic, Legal, Ethical, Philanthropic).<br>
+          • <strong>Core Conclusion:</strong> Long-term competitive advantage aligns directly with proactive sustainability.
+        </div>
+        <div class="term-line user">
+          <span class="prompt">User:</span> Who made you?
+        </div>
+        <div class="term-line nexus">
+          <span class="prompt-nexus">✦ NEXUS:</span> <strong>Raiyan coded me!</strong> I am NEXUS, your personal autonomous AI companion designed to live on your Windows desktop.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download & Setup Section -->
+  <section class="download-section" id="download">
+    <div class="download-card">
+      <div class="download-content">
+        <h2>Ready to run NEXUS on your Windows Desktop?</h2>
+        <p>100% open source, free to use, and runs locally with zero telemetry tracking.</p>
+        <div class="code-box">
+          <code>git clone https://github.com/Raiyan/NEXUS-AI-Companion.git<br>cd NEXUS-AI-Companion<br>run_nexus.bat</code>
+        </div>
+        <div class="btn-group">
+          <a href="https://github.com/Raiyan/NEXUS-AI-Companion" class="btn btn-primary" target="_blank">
+            <span>📦 View on GitHub</span>
+          </a>
+          <a href="https://github.com/Raiyan/NEXUS-AI-Companion/archive/refs/heads/main.zip" class="btn btn-outline">
+            <span>⬇️ Download ZIP</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-brand">
+        <span class="logo-spark">✦</span> NEXUS — Autonomous AI Desktop Companion
+      </div>
+      <div class="footer-copy">
+        Coded & Engineered by <strong>Raiyan</strong> • Released under the MIT License • Built with PySide6 & Python 3.13
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
