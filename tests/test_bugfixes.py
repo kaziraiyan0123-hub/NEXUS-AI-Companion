@@ -120,5 +120,18 @@ class TestForensicBugFixes(unittest.TestCase):
         self.assertEqual(bubble.message.content, accumulated)
         bubble.close()
 
+    def test_07_context_menu_affection_calls(self):
+        """Verifies high-five, pet, and sparkle cheer work when controller is DesktopPet."""
+        from desktop.context_menu import PetContextMenu
+        pet = DesktopPet()
+        menu = PetContextMenu(pet, pet)
+        
+        # Test affection helper methods without raising AttributeError
+        menu._trigger_pet()
+        menu._trigger_high_five()
+        menu._trigger_sparkle_cheer()
+        
+        pet.close()
+
 if __name__ == "__main__":
     unittest.main()

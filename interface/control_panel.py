@@ -930,23 +930,29 @@ class LaptopControlPanel(QDialog):
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to create desktop shortcut: {e}")
 
+    def _get_pet_instance(self):
+        if self.controller and hasattr(self.controller, 'pet') and self.controller.pet:
+            return self.controller.pet
+        return self.controller
+
     def _pet_clicked(self):
-        if self.controller and hasattr(self.controller, 'pet_the_pet'):
-            self.controller.pet_the_pet()
-        elif self.controller and hasattr(self.controller, 'pet'):
-            self.controller.pet.pet_the_pet()
+        pet = self._get_pet_instance()
+        if pet and hasattr(pet, 'pet_the_pet'):
+            pet.pet_the_pet()
 
     def _five_clicked(self):
-        if self.controller and hasattr(self.controller, 'pet') and hasattr(self.controller.pet, 'high_five'):
-            self.controller.pet.high_five()
-        elif self.controller and hasattr(self.controller, 'pet_the_pet'):
-            self.controller.pet_the_pet()
+        pet = self._get_pet_instance()
+        if pet and hasattr(pet, 'high_five'):
+            pet.high_five()
+        elif pet and hasattr(pet, 'pet_the_pet'):
+            pet.pet_the_pet()
 
     def _cheer_clicked(self):
-        if self.controller and hasattr(self.controller, 'pet') and hasattr(self.controller.pet, 'sparkle_cheer'):
-            self.controller.pet.sparkle_cheer()
-        elif self.controller and hasattr(self.controller, 'pet_the_pet'):
-            self.controller.pet_the_pet()
+        pet = self._get_pet_instance()
+        if pet and hasattr(pet, 'sparkle_cheer'):
+            pet.sparkle_cheer()
+        elif pet and hasattr(pet, 'pet_the_pet'):
+            pet.pet_the_pet()
 
     def _apply_styling(self):
         self.setStyleSheet("""

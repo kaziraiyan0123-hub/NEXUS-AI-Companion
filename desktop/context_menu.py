@@ -43,13 +43,13 @@ class PetContextMenu(QMenu):
         # Affection & Interactions
         bond_menu = self.addMenu(f"💖  Affection ({bond['title']} • {bond['xp']} XP)")
         pet_action = bond_menu.addAction("💖  Pet NEXUS (+5 XP)")
-        pet_action.triggered.connect(self.controller.pet_the_pet)
+        pet_action.triggered.connect(self._trigger_pet)
 
         five_action = bond_menu.addAction("✋  High-Five NEXUS (+10 XP)")
-        five_action.triggered.connect(lambda: getattr(self.controller.pet, "high_five", self.controller.pet_the_pet)())
+        five_action.triggered.connect(self._trigger_high_five)
 
         cheer_action = bond_menu.addAction("⭐  Sparkle Cheer (+5 XP)")
-        cheer_action.triggered.connect(lambda: getattr(self.controller.pet, "sparkle_cheer", self.controller.pet_the_pet)())
+        cheer_action.triggered.connect(self._trigger_sparkle_cheer)
 
         # Identity & Profile
         name_display = f"👤  My Name ({user_name})" if user_name else "👤  Set My Name..."
@@ -124,10 +124,35 @@ class PetContextMenu(QMenu):
             mm.set_user_name(clean)
             if hasattr(self.controller, "chat_window") and hasattr(self.controller.chat_window, "user_badge"):
                 self.controller.chat_window.user_badge.setText(f"👤 {clean}")
-            if hasattr(self.controller, "pet"):
-                self.controller.pet.say(f"I will remember you as {clean}! ✦", 3000)
+            pet = self._get_pet_instance()
+            if hasattr(pet, "say"):
+                pet.say(f"I will remember you as {clean}! ✦", 3000)
             try:
                 from core.voice_engine import get_voice_engine
                 get_voice_engine().speak(f"Understood. I will remember you as {clean} forever.")
             except Exception:
                 pass
+
+    def _get_pet_instance(self):
+        if hasattr(self.controller, "pet") and self.controller.pet:
+            return self.controller.pet
+        return self.controller
+
+    def _trigger_pet(self):
+        pet = self._get_pet_instance()
+        if hasattr(pet, "pet_the_pet"):
+            pet.pet_the_pet()
+
+    def _trigger_high_five(self):
+        pet = self._get_pet_instance()
+        if hasattr(pet, "high_five"):
+            pet.high_five()
+        elif hasattr(pet, "pet_the_pet"):
+            pet.pet_the_pet()
+
+    def _trigger_sparkle_cheer(self):
+        pet = self._get_pet_instance()
+        if hasattr(pet, "sparkle_cheer"):
+            pet.sparkle_cheer()
+        elif hasattr(pet, "pet_the_pet"):
+            pet.pet_the_pet()
