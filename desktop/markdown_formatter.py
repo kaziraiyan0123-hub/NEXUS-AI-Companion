@@ -12,7 +12,7 @@ from pygments.formatters import HtmlFormatter
 from interface.themes import CharacterSkin
 
 def format_code_block(code_text: str, language: str = "") -> str:
-    """Highlights code using Pygments and wraps in a sleek dark card."""
+    """Highlights code using Pygments with monokai dark theme (no classes) and wraps in a sleek dark card."""
     code_text = code_text.strip()
     try:
         if language:
@@ -22,16 +22,16 @@ def format_code_block(code_text: str, language: str = "") -> str:
     except Exception:
         lexer = TextLexer()
 
-    formatter = HtmlFormatter(nowrap=True, noclasses=False)
+    formatter = HtmlFormatter(nowrap=True, noclasses=True, style="monokai")
     highlighted = highlight(code_text, lexer, formatter)
     lang_display = language.upper() if language else "CODE"
 
     return f"""
-    <div class="code-card">
-        <div class="code-header">
-            <span class="code-lang">{lang_display}</span>
+    <div class="code-card" style="background-color: #0b0f19; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; margin: 8px 0;">
+        <div style="background-color: #111827; border-bottom: 1px solid rgba(255, 255, 255, 0.06); padding: 5px 12px; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 11px; font-weight: 700; color: #38bdf8; letter-spacing: 0.5px;">
+            {lang_display}
         </div>
-        <pre class="code-body"><code>{highlighted}</code></pre>
+        <pre style="margin: 0; padding: 10px 12px; background-color: #0b0f19; color: #f8f8f2; font-family: 'Consolas', 'Cascadia Code', monospace; font-size: 12px; line-height: 1.5; border: none;">{highlighted}</pre>
     </div>
     """
 
@@ -66,10 +66,7 @@ def markdown_to_html(md_text: str, skin: CharacterSkin = None) -> str:
     for idx, block in enumerate(code_blocks):
         html_output = html_output.replace(f"@@@CODE_BLOCK_{idx}@@@", block)
 
-    # Get Pygments CSS rules
-    pygments_css = HtmlFormatter().get_style_defs('.code-body')
-
-    # Full styled HTML wrapper
+    # Full styled HTML wrapper with sleek dark mode aesthetics (no light backgrounds or borders)
     full_html = f"""
     <html>
     <head>
@@ -121,37 +118,11 @@ def markdown_to_html(md_text: str, skin: CharacterSkin = None) -> str:
             padding: 1px 5px;
             border-radius: 4px;
         }}
-        .code-card {{
-            background: #090d16;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 8px;
-            margin: 7px 0;
-            overflow: hidden;
-        }}
-        .code-header {{
-            background: rgba(255, 255, 255, 0.03);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-            padding: 4px 10px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            color: #94a3b8;
-            font-weight: 600;
-        }}
-        .code-lang {{
-            color: #38bdf8;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }}
-        .code-body {{
-            font-family: 'Consolas', 'Cascadia Code', monospace;
-            font-size: 12px;
-            padding: 8px 10px;
-            margin: 0;
-            background: #070a10;
-            overflow-x: auto;
-            color: #e2e8f0;
-            line-height: 1.45;
+        pre code {{
+            background: transparent;
+            border: none;
+            padding: 0;
+            color: inherit;
         }}
         a {{
             color: #38bdf8;
@@ -176,8 +147,6 @@ def markdown_to_html(md_text: str, skin: CharacterSkin = None) -> str:
             color: #f1f5f9;
             font-weight: 600;
         }}
-        /* Pygments Syntax Theme */
-        {pygments_css}
     </style>
     </head>
     <body>
@@ -185,4 +154,5 @@ def markdown_to_html(md_text: str, skin: CharacterSkin = None) -> str:
     </body>
     </html>
     """
+    return full_html
     return full_html

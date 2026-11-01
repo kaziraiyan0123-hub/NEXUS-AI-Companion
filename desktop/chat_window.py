@@ -38,6 +38,16 @@ class ChatInputEdit(QTextEdit):
         else:
             super().keyPressEvent(event)
 
+class SolidHudCard(QFrame):
+    """100% opaque solid background frame to completely prevent desktop bleed-through."""
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setBrush(QBrush(QColor(13, 17, 23, 255)))
+        painter.setPen(QPen(QColor(255, 255, 255, 20), 1))
+        painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 16, 16)
+
+
 class AdvancedChatWindow(QWidget):
     """Ultra-advanced futuristic HUD conversational interface for NEXUS."""
 
@@ -107,8 +117,8 @@ class AdvancedChatWindow(QWidget):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Outer HUD Card
-        self.hud_card = QFrame()
+        # Outer HUD Card (100% opaque solid background)
+        self.hud_card = SolidHudCard()
         self.hud_card.setObjectName("HudCard")
         self.hud_card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         hud_layout = QVBoxLayout(self.hud_card)

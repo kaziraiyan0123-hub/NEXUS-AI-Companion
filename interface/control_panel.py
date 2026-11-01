@@ -11,7 +11,7 @@ import logging
 from typing import Optional
 
 from PySide6.QtCore import Qt, QTimer, QPoint, Signal, Slot
-from PySide6.QtGui import QFont, QCursor, QColor, QIcon
+from PySide6.QtGui import QFont, QCursor, QColor, QIcon, QPainter, QPen, QBrush
 from PySide6.QtWidgets import (
     QDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QProgressBar, QSlider, QTabWidget, QFrame,
@@ -28,6 +28,16 @@ from core.desktop_tools import get_tool_registry
 from core.voice_engine import get_voice_engine
 
 logger = logging.getLogger("NEXUS.ControlPanel")
+
+
+class SolidControlCard(QFrame):
+    """100% opaque solid background frame to completely prevent desktop bleed-through."""
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setBrush(QBrush(QColor(13, 17, 23, 255)))
+        painter.setPen(QPen(QColor(255, 255, 255, 20), 1))
+        painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 16, 16)
 
 
 class LaptopControlPanel(QDialog):
@@ -73,8 +83,8 @@ class LaptopControlPanel(QDialog):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Outer Card
-        self.card = QFrame()
+        # Outer Card (100% opaque solid background)
+        self.card = SolidControlCard()
         self.card.setObjectName("ControlPanelCard")
         self.card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         card_layout = QVBoxLayout(self.card)

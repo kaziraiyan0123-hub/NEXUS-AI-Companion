@@ -240,6 +240,27 @@
       ctx.lineTo(4 + eyeOffsetX, -7 + eyeOffsetY);
       ctx.stroke();
 
+      // Specular sheen reflection on aviators
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(-20 + eyeOffsetX, -10 + eyeOffsetY);
+      ctx.lineTo(-12 + eyeOffsetX, -2 + eyeOffsetY);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(8 + eyeOffsetX, -10 + eyeOffsetY);
+      ctx.lineTo(16 + eyeOffsetX, -2 + eyeOffsetY);
+      ctx.stroke();
+
+      // Golden glint star on frame corner
+      ctx.fillStyle = '#fffbeb';
+      ctx.beginPath();
+      const glintX = 22 + eyeOffsetX;
+      const glintY = -12 + eyeOffsetY;
+      ctx.arc(glintX, glintY, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
       // Gold Habibi Agal Cord
       ctx.strokeStyle = '#18181b';
       ctx.lineWidth = 4;
