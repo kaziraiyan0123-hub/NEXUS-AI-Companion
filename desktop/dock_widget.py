@@ -20,6 +20,7 @@ class NexusDockWidget(QWidget):
     chat_requested = Signal()
     vision_requested = Signal()
     control_panel_requested = Signal()
+    games_requested = Signal()
     power_toggled = Signal()
     pet_summon_requested = Signal()
 
@@ -42,7 +43,7 @@ class NexusDockWidget(QWidget):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setFixedHeight(48)
-        self.setMinimumWidth(430)
+        self.setMinimumWidth(500)
 
     def _build_ui(self):
         main_layout = QHBoxLayout(self)
@@ -82,6 +83,13 @@ class NexusDockWidget(QWidget):
         self.chat_btn.setToolTip("Toggle Clean Chat HUD")
         self.chat_btn.clicked.connect(self.chat_requested.emit)
         pill_layout.addWidget(self.chat_btn)
+
+        # 4b. Brain Games & Arcade Button
+        self.games_btn = QPushButton("🎮 Games")
+        self.games_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.games_btn.setToolTip("Play Brain Games & Arcade (Tic-Tac-Toe, Memory, Trivia)")
+        self.games_btn.clicked.connect(self.games_requested.emit)
+        pill_layout.addWidget(self.games_btn)
 
         # 5. Laptop Command Center Button
         self.cp_btn = QPushButton("💻 Center")

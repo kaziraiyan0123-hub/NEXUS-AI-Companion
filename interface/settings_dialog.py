@@ -584,7 +584,7 @@ class SettingsDialog(QDialog):
             self.provider_combo.setCurrentIndex(idx)
         self._update_model_dropdown_for_provider(curr_provider)
 
-        curr_model = self.settings.get("ai_model", "gemini-2.5-flash")
+        curr_model = self.settings.get("ai_model", "gemini-4-argon")
         m_idx = self.model_combo.findText(curr_model)
         if m_idx >= 0:
             self.model_combo.setCurrentIndex(m_idx)
@@ -633,22 +633,19 @@ class SettingsDialog(QDialog):
         self.model_combo.clear()
         models_map = {
             "groq": [
-                "llama-3.3-70b-versatile",
-                "deepseek-r1-distill-llama-70b",
                 "qwen/qwen3.8-27b",
-                "llama-3.1-8b-instant",
-                "mixtral-8x7b-32768",
-                "gemma2-9b-it"
+                "openai/gpt-oss-120b",
+                "openai/gpt-oss-20b",
+                "deepseek-r1-distill-llama-70b",
+                "allam-2-7b",
+                "llama-3.1-8b-instant"
             ],
             "gemini": [
-                "gemini-2.5-flash",
-                "gemini-2.5-pro",
-                "gemini-2.5-flash-lite",
-                "gemini-2.0-flash",
-                "gemini-1.5-flash",
-                "gemini-1.5-pro",
-                "gemini-3.1-flash-lite",
-                "gemini-3-flash-preview"
+                "gemini-4-argon",
+                "gemini-3.8-flash",
+                "gemini-3.5-flash",
+                "gemini-3.5-flash-lite",
+                "gemini-flash-latest"
             ],
             "openrouter": [
                 "meta-llama/llama-3.3-70b-instruct:free",

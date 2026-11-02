@@ -777,22 +777,19 @@ class LaptopControlPanel(QDialog):
         self.m_combo.clear()
         models_map = {
             "groq": [
-                "llama-3.3-70b-versatile",
-                "deepseek-r1-distill-llama-70b",
                 "qwen/qwen3.8-27b",
-                "llama-3.1-8b-instant",
-                "mixtral-8x7b-32768",
-                "gemma2-9b-it"
+                "openai/gpt-oss-120b",
+                "openai/gpt-oss-20b",
+                "deepseek-r1-distill-llama-70b",
+                "allam-2-7b",
+                "llama-3.1-8b-instant"
             ],
             "gemini": [
-                "gemini-2.5-flash",
-                "gemini-2.5-pro",
-                "gemini-2.5-flash-lite",
-                "gemini-2.0-flash",
-                "gemini-1.5-flash",
-                "gemini-1.5-pro",
-                "gemini-3.1-flash-lite",
-                "gemini-3-flash-preview"
+                "gemini-4-argon",
+                "gemini-3.8-flash",
+                "gemini-3.5-flash",
+                "gemini-3.5-flash-lite",
+                "gemini-flash-latest"
             ],
             "openrouter": [
                 "meta-llama/llama-3.3-70b-instruct:free",

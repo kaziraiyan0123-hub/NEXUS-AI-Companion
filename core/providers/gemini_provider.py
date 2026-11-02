@@ -16,14 +16,10 @@ class GeminiProvider(BaseAIProvider):
     """Google Gemini AI Provider."""
 
     MODELS = [
-        "gemini-2.5-flash",
-        "gemini-2.5-pro",
-        "gemini-2.5-flash-lite",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash",
-        "gemini-1.5-pro",
-        "gemini-3.1-flash-lite",
-        "gemini-3-flash-preview",
+        "gemini-4-argon",
+        "gemini-3.8-flash",
+        "gemini-3.5-flash",
+        "gemini-3.5-flash-lite",
         "gemini-flash-latest"
     ]
 
@@ -37,11 +33,11 @@ class GeminiProvider(BaseAIProvider):
 
     @property
     def display_name(self) -> str:
-        return "Google Gemini (Free Tier)"
+        return "Google Gemini (Gemini 4 Argon & 3.8 Flash)"
 
     @property
     def default_model(self) -> str:
-        return "gemini-2.5-flash"
+        return "gemini-4-argon"
 
     @property
     def available_models(self) -> List[str]:

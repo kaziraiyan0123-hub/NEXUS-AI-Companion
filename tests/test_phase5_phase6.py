@@ -184,7 +184,8 @@ class TestNeuralVoiceAndFreeModels(unittest.TestCase):
         # Groq Cloud
         groq = GroqProvider()
         self.assertEqual(groq.name, "groq")
-        self.assertIn("llama-3.3-70b-versatile", groq.available_models)
+        self.assertIn("qwen/qwen3.8-27b", groq.available_models)
+        self.assertIn("openai/gpt-oss-120b", groq.available_models)
         self.assertIn("deepseek-r1-distill-llama-70b", groq.available_models)
 
         # OpenRouter Free

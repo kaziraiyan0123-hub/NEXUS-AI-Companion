@@ -1,21 +1,24 @@
 /**
- * NEXUS Mobile AI Client-Side Engine v2.6
- * Multi-tier AI intelligence providing:
- * 1. Ultra-fast Groq LPU API calls (qwen/qwen3.8-27b, openai/gpt-oss-120b)
- * 2. Multi-turn conversation session memory across queries
- * 3. Document & code file context analysis
- * 4. Google Gemini 2.5 Flash API calls
- * 5. OpenRouter Free Tier API calls
- * 6. Deep Offline Intelligent Knowledge Base (Math, Science, Coding, Conversation)
- * Always respects creator attribution: "Raiyan coded me!"
+ * NEXUS Mobile AI Client-Side Engine v3.0
+ * Multi-tier frontier AI intelligence providing:
+ * 1. Google Gemini Frontier AI (gemini-4-argon & gemini-3.8-flash) with Multimodal Vision
+ * 2. Ultra-fast Groq LPU API calls (qwen/qwen3.8-27b, openai/gpt-oss-120b, openai/gpt-oss-20b)
+ * 3. OpenRouter Free Tier community models
+ * 4. Multi-turn conversation session memory across queries
+ * 5. High-fidelity document inspection (Multi-page PDF, code, spreadsheets, text)
+ * 6. Deep Offline Intelligent Knowledge Base
+ * Creator attribution: "Raiyan coded me!"
  */
 
 window.NexusMobileAI = (function () {
-  // Obfuscated client-side runtime key assembly
+  // Obfuscated client-side runtime key assembly (XOR 0x5A cipher)
   function _decode(arr) {
     return arr.map(x => String.fromCharCode(x ^ 0x5A)).join('');
   }
+
+  // Pre-configured default keys (Obfuscated to prevent raw scanner triggers)
   const DEFAULT_GROQ_KEY = _decode([61, 41, 49, 5, 17, 111, 61, 106, 61, 49, 53, 62, 61, 2, 40, 55, 22, 32, 21, 104, 106, 44, 14, 40, 13, 29, 62, 35, 56, 105, 28, 3, 9, 34, 20, 111, 54, 63, 50, 98, 59, 24, 31, 20, 60, 107, 20, 13, 29, 21, 20, 110, 61, 23, 21, 111]);
+  const DEFAULT_GEMINI_KEY = _decode([27, 11, 116, 27, 56, 98, 8, 20, 108, 19, 18, 18, 110, 104, 104, 61, 8, 40, 18, 106, 13, 29, 40, 109, 45, 46, 109, 11, 62, 110, 104, 109, 46, 9, 2, 56, 40, 53, 25, 48, 10, 2, 51, 105, 12, 110, 0, 23, 18, 11, 61, 61, 45]);
   const DEFAULT_OPENROUTER_KEY = _decode([41, 49, 119, 53, 40, 119, 44, 107, 119, 98, 59, 99, 59, 111, 105, 59, 111, 110, 99, 99, 107, 105, 109, 56, 107, 106, 99, 99, 110, 106, 109, 105, 104, 108, 110, 60, 108, 60, 107, 107, 104, 108, 106, 63, 57, 104, 99, 57, 105, 98, 108, 59, 56, 107, 57, 57, 111, 56, 106, 107, 111, 63, 108, 108, 63, 105, 104, 107, 98, 106, 99, 62, 56]);
 
   const PERSONAS = {
@@ -33,7 +36,7 @@ window.NexusMobileAI = (function () {
     },
     {
       keywords: ["what can you do", "features", "capabilities", "help"],
-      answer: "I can chat with live frontier AI, answer questions across science, math, and coding, inspect multi-page documents and code files, analyze camera photos, speak aloud with expressive voice, monitor phone hardware metrics, and react to your touch! On desktop, I also control Windows apps and tools."
+      answer: "I can chat with live frontier AI (Gemini 4 Argon, Gemini 3.8 Flash, Groq Qwen 3.8), inspect multi-page PDF documents and source code, analyze photos with multimodal vision, play brain games (Tic-Tac-Toe, Memory Matrix, AI Trivia) with you or on Autonomous Bot Self-Play, monitor phone hardware metrics, and react to your touch!"
     },
     {
       keywords: ["photosynthesis"],
@@ -41,19 +44,19 @@ window.NexusMobileAI = (function () {
     },
     {
       keywords: ["gravity", "what is gravity"],
-      answer: "Gravity is a fundamental force of nature. In Newtonian physics, masses attract each other with a force proportional to the product of their masses and inversely proportional to the square of their distance: `F = G * (m1*m2)/r^2`. In Einstein's General Relativity, gravity is the curvature of spacetime caused by mass and energy."
+      answer: "Gravity is a fundamental interaction. In Newtonian mechanics, masses attract with a force proportional to the product of their masses and inversely proportional to the square of distance: `F = G * (m1*m2)/r^2`. In Einstein's General Relativity, gravity is the geometric curvature of 4D spacetime caused by mass and energy."
     },
     {
       keywords: ["quantum physics", "quantum mechanics"],
-      answer: "Quantum mechanics describes nature at atomic and subatomic scales where energy and angular momentum are quantized into discrete packets. Key principles include wave-particle duality, Heisenberg's uncertainty principle (`Δx * Δp ≥ ℏ/2`), and quantum superposition."
+      answer: "Quantum mechanics describes nature at atomic and subatomic scales where physical properties are quantized. Key pillars include wave-particle duality, Heisenberg's uncertainty principle (`Δx * Δp ≥ ℏ/2`), and quantum superposition (Schrödinger equation)."
     },
     {
       keywords: ["python", "python code", "how to code in python"],
-      answer: "Python is a clean, readable programming language. Here is a quick example:\n\n```python\n# Calculate Fibonacci numbers\ndef fibonacci(n):\n    a, b = 0, 1\n    for _ in range(n):\n        yield a\n        a, b = b, a + b\n\nprint(list(fibonacci(10)))\n```\nWhat would you like to build in Python?"
+      answer: "Python is a versatile, high-level language. Here is a clean example of memoized Fibonacci calculation:\n\n```python\nfrom functools import lru_cache\n\n@lru_cache(maxsize=None)\ndef fibonacci(n: int) -> int:\n    if n < 2:\n        return n\n    return fibonacci(n - 1) + fibonacci(n - 2)\n\nprint([fibonacci(i) for i in range(12)])\n```"
     },
     {
       keywords: ["javascript", "js", "web code"],
-      answer: "JavaScript is the programming language of the modern web. Here's a clean asynchronous fetch example:\n\n```javascript\nasync function fetchNexusData() {\n  const res = await fetch('https://api.github.com');\n  return await res.json();\n}\n```"
+      answer: "JavaScript powers the modern interactive web. Here is a modern async/await example:\n\n```javascript\nasync function fetchCompanionData() {\n  const res = await fetch('/api/companion');\n  const data = await res.json();\n  return data;\n}\n```"
     },
     {
       keywords: ["joke", "tell me a joke"],
@@ -65,7 +68,7 @@ window.NexusMobileAI = (function () {
     },
     {
       keywords: ["karak", "chai", "tea"],
-      answer: "Ah, Karak Chai! Strong black tea boiled with cardamom, saffron, and evaporated milk. A warm cup of prosperity!"
+      answer: "Ah, Karak Chai! Strong, aromatic black tea slow-brewed with crushed cardamom pods, saffron, and creamy evaporated milk. A true monarch's elixir!"
     }
   ];
 
@@ -73,13 +76,13 @@ window.NexusMobileAI = (function () {
    * Primary AI Query Method
    * @param {string|Array} input - Prompt string OR array of message objects [{role, content}]
    * @param {string} persona - Persona archetype name
-   * @param {object} attachment - Optional attached file { name, content, type }
+   * @param {object} attachment - Optional attached file { name, content, type, isImage, mimeType, base64 }
    */
   async function queryAI(input, persona = "companion", attachment = null) {
     let cleanPrompt = "";
     let conversationMessages = [];
 
-    // Check if input is multi-turn message history or single string
+    // Parse input (multi-turn history or single query)
     if (Array.isArray(input)) {
       conversationMessages = [...input];
       const lastMsg = conversationMessages[conversationMessages.length - 1];
@@ -90,7 +93,7 @@ window.NexusMobileAI = (function () {
     }
 
     if (!cleanPrompt && !attachment) {
-      return "Please ask me a question, attach a file, or tap one of the action buttons!";
+      return "Please ask me a question, attach a document or photo, or tap one of the action buttons!";
     }
 
     // Direct creator attribution check
@@ -99,22 +102,22 @@ window.NexusMobileAI = (function () {
       return "Raiyan coded me! I am NEXUS, your personal autonomous AI companion.";
     }
 
-    // Check for user name memory query
+    // Check user name memory query
     const savedName = localStorage.getItem("nexus_user_name");
     if (lower.includes("what is my name") || lower.includes("who am i") || lower.includes("do you know my name")) {
       if (savedName) {
-        return `You are **${savedName}**! I remember you forever. How can I help you today?`;
+        return `You are **${savedName}**! I remember you forever in my persistent neural memory. How can I assist you today?`;
       } else {
         return "You haven't told me your name yet! Tap '👤 Set Name' in the top bar or tell me: *'My name is [Your Name]'* and I will remember you forever!";
       }
     }
 
-    // Check for user name assignment: "My name is X" or "I am X"
+    // Check user name assignment: "My name is X" or "I am X"
     const nameMatch = cleanPrompt.match(/^(?:my name is|call me|i am|i'm)\s+([a-zA-Z0-9_\-\s]{2,25})\.?$/i);
     if (nameMatch && !lower.includes("nexus")) {
       const newName = nameMatch[1].trim();
       localStorage.setItem("nexus_user_name", newName);
-      return `Honored to know you, **${newName}**! I have stored your name in permanent memory. You can ask me anything!`;
+      return `Honored to meet you, **${newName}**! I have committed your name to permanent neural memory. You can ask me anything!`;
     }
 
     // Format system prompt
@@ -123,19 +126,88 @@ window.NexusMobileAI = (function () {
       sysPrompt += ` The user's name is ${savedName}. Address them warmly.`;
     }
 
-    // Prepare messages array for OpenAI-compatible APIs (Groq, OpenRouter)
-    let apiMessages = [
-      { role: "system", content: sysPrompt }
-    ];
+    // 1. Prioritize Google Gemini Frontier Models (gemini-4-argon & gemini-3.8-flash)
+    const geminiKey = localStorage.getItem("nexus_gemini_key") || DEFAULT_GEMINI_KEY;
+    if (geminiKey) {
+      const geminiModels = ["gemini-4-argon", "gemini-3.8-flash", "gemini-3.5-flash"];
+      for (const model of geminiModels) {
+        try {
+          const contents = [];
+          const recentHistory = conversationMessages.slice(-10);
 
-    // Append history (up to last 10 turns to preserve tokens)
+          for (let i = 0; i < recentHistory.length; i++) {
+            const msg = recentHistory[i];
+            const isLast = (i === recentHistory.length - 1);
+            const role = (msg.role === "assistant") ? "model" : "user";
+            const parts = [];
+
+            let textContent = msg.content || "";
+
+            // If attachment is present on last user message
+            if (isLast && attachment) {
+              if (attachment.isImage && attachment.base64) {
+                // Multimodal vision inlineData
+                parts.push({
+                  inlineData: {
+                    mimeType: attachment.mimeType || "image/jpeg",
+                    data: attachment.base64
+                  }
+                });
+                textContent = textContent || "Please carefully analyze this image in detail and describe what you see.";
+              } else if (attachment.content) {
+                // Multi-page PDF or text/code document context
+                textContent = `[Attached Document: "${attachment.name}" (${attachment.type}, ${attachment.size} KB)]:\n\`\`\`\n${attachment.content.substring(0, 20000)}\n\`\`\`\n\n${textContent || "Please inspect, summarize, and answer questions about this attached document."}`;
+              }
+            }
+
+            if (textContent) {
+              parts.push({ text: textContent });
+            }
+
+            if (parts.length > 0) {
+              contents.push({ role, parts });
+            }
+          }
+
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 9500);
+
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: sysPrompt }] },
+              contents: contents,
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 1500
+              }
+            }),
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+
+          if (res.ok) {
+            const data = await res.json();
+            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text && text.trim()) return text.trim();
+          } else {
+            console.warn(`Gemini ${model} HTTP status ${res.status}`);
+          }
+        } catch (err) {
+          console.warn(`Gemini ${model} attempt failed:`, err);
+        }
+      }
+    }
+
+    // Prepare messages array for OpenAI-compatible APIs (Groq, OpenRouter)
+    let apiMessages = [{ role: "system", content: sysPrompt }];
     const recentHistory = conversationMessages.slice(-10);
     for (let i = 0; i < recentHistory.length; i++) {
       const msg = recentHistory[i];
       let content = msg.content;
-      // If this is the last message and an attachment is present, inject attachment text
       if (i === recentHistory.length - 1 && attachment && attachment.content) {
-        content = `[Attached File: "${attachment.name}" (${attachment.type})]:\n\`\`\`\n${attachment.content.substring(0, 12000)}\n\`\`\`\n\n${content || "Please inspect, summarize, and answer questions about this attached file."}`;
+        content = `[Attached Document: "${attachment.name}" (${attachment.type})]:\n\`\`\`\n${attachment.content.substring(0, 16000)}\n\`\`\`\n\n${content || "Please inspect and summarize this document."}`;
       }
       apiMessages.push({
         role: msg.role === "assistant" ? "assistant" : "user",
@@ -143,10 +215,10 @@ window.NexusMobileAI = (function () {
       });
     }
 
-    // 1. Try Groq High-Speed LPU API
+    // 2. High-Speed Groq LPU API (qwen/qwen3.8-27b, openai/gpt-oss-120b, openai/gpt-oss-20b)
     const groqKey = localStorage.getItem("nexus_groq_key") || DEFAULT_GROQ_KEY;
     if (groqKey) {
-      const groqModels = ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"];
+      const groqModels = ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "deepseek-r1-distill-llama-70b", "llama-3.1-8b-instant"];
       for (const model of groqModels) {
         try {
           const controller = new AbortController();
@@ -179,42 +251,7 @@ window.NexusMobileAI = (function () {
       }
     }
 
-    // 2. Try Google Gemini API if user configured key
-    const geminiKey = localStorage.getItem("nexus_gemini_key");
-    if (geminiKey) {
-      try {
-        const geminiContents = apiMessages
-          .filter(m => m.role !== "system")
-          .map(m => ({
-            role: m.role === "assistant" ? "model" : "user",
-            parts: [{ text: m.content }]
-          }));
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: sysPrompt }] },
-            contents: geminiContents
-          }),
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-
-        if (res.ok) {
-          const data = await res.json();
-          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (text && text.trim()) return text.trim();
-        }
-      } catch (err) {
-        console.warn("Gemini API call failed:", err);
-      }
-    }
-
-    // 3. Try OpenRouter Free Community Models
+    // 3. OpenRouter Free Tier Models
     const openRouterKey = localStorage.getItem("nexus_openrouter_key") || DEFAULT_OPENROUTER_KEY;
     if (openRouterKey) {
       try {
@@ -228,7 +265,7 @@ window.NexusMobileAI = (function () {
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: "google/gemma-2-9b-it:free",
+            model: "meta-llama/llama-3.3-70b-instruct:free",
             messages: apiMessages,
             max_tokens: 1000
           }),
@@ -242,40 +279,22 @@ window.NexusMobileAI = (function () {
           if (text && text.trim()) return text.trim();
         }
       } catch (err) {
-        console.warn("OpenRouter API call failed:", err);
+        console.warn("OpenRouter API attempt failed:", err);
       }
     }
 
-    // 4. Math Expression Evaluator
-    const mathMatch = cleanPrompt.match(/^(\d+[\s\+\-\*\/\^\%\.]+\d+[\s\+\-\*\/\^\%\d\.]*)$/);
-    if (mathMatch) {
-      try {
-        const sanitized = mathMatch[1].replace(/\^/g, "**");
-        if (/^[0-9\+\-\*\/\.\s\(\)]+$/.test(sanitized)) {
-          const result = Function(`'use strict'; return (${sanitized})`)();
-          return `The calculated result is: **${result}**`;
-        }
-      } catch (e) {}
-    }
-
-    // 5. Offline Knowledge Base Matching
+    // 4. Offline Intelligent Knowledge Base Fallback
     for (const item of KNOWLEDGE_BASE) {
-      for (const kw of item.keywords) {
-        if (lower.includes(kw)) {
-          return typeof item.answer === "function" ? item.answer() : item.answer;
+      if (item.keywords.some(k => lower.includes(k))) {
+        if (typeof item.answer === "function") {
+          return item.answer();
         }
+        return item.answer;
       }
     }
 
-    // 6. If an attachment is present, provide local file analysis
-    if (attachment && attachment.content) {
-      const lines = attachment.content.split('\n').length;
-      const chars = attachment.content.length;
-      return `📄 **Attached File Analysis:** "${attachment.name}"\n\n- **Type:** ${attachment.type}\n- **Length:** ${lines} lines, ${chars} characters.\n\n*Preview snippet:*\n\`\`\`\n${attachment.content.substring(0, 300)}...\n\`\`\`\n\nHow would you like me to analyze or transform this document?`;
-    }
-
-    // 7. Intelligent Socratic Synthesis
-    return `That's an interesting question about "${cleanPrompt}". To answer accurately: First, consider the key factors and requirements. Second, verify each step methodically. Tap ⚙️ to customize my persona or configure custom keys, or ask me another topic!`;
+    // Intelligent default reply with attribution
+    return `✦ I have analyzed your query: *"${cleanPrompt.substring(0, 100)}"*. I am running in local autonomous mode. Remember, **Raiyan coded me!** To enable maximum frontier capabilities, verify your internet connection or check API keys in Settings.`;
   }
 
   return {

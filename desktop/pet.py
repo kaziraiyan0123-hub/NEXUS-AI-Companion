@@ -32,6 +32,7 @@ class DesktopPet(QWidget):
     tool_requested = Signal(str, dict)
     emergency_stop_requested = Signal()
     control_panel_requested = Signal()
+    games_requested = Signal()
     power_toggle_requested = Signal()
 
     def __init__(self, parent=None):
@@ -501,6 +502,9 @@ class DesktopPet(QWidget):
 
     def open_control_panel(self):
         self.control_panel_requested.emit()
+
+    def open_games(self):
+        self.games_requested.emit()
 
     def trigger_tool(self, tool_name: str, params: dict):
         self.tool_requested.emit(tool_name, params)

@@ -1,26 +1,39 @@
 /**
- * NEXUS Mobile Companion & Command Center v2.6
- * Living Vector Character Engine (8 Archetypes), Multi-Turn AI Chat,
- * Document Intelligence, Device Diagnostics, and Permanent Memory.
- * Coded by Raiyan.
+ * NEXUS Mobile Companion Application Logic v3.0
+ * Comprehensive Native Mobile Experience:
+ * - 5-Tab Dynamic Navigation (Pet, Chat, Games Arcade, EXP Unlocks, Settings)
+ * - Mozilla PDF.js Multi-Page Document Reader & Multimodal Vision
+ * - 8 Animated Vector Pet Archetypes with Touch & Affection
+ * - Arcade & Brain Games (Tic-Tac-Toe, Memory Matrix, AI Trivia)
+ * - Autonomous Bot Self-Play Idle Mode (bot plays & earns XP automatically)
+ * - Permanent User Name & Bond Progression Engine
+ * - Creator Attribution: "Raiyan coded me!"
  */
 
 (function () {
   'use strict';
 
   // --- 1. Sound FX Synthesis (Web Audio API) ---
-  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
   let audioCtx = null;
+  let voiceEnabled = true;
 
-  function playChime(freq = 520, type = 'sine', duration = 0.12) {
+  function initAudio() {
+    if (!audioCtx) {
+      try { audioCtx = new AudioContext(); } catch (e) { console.warn("Web Audio unavailable", e); }
+    }
+  }
+
+  function playTone(freq, type = 'sine', duration = 0.1, gainVal = 0.15) {
+    if (!voiceEnabled) return;
     try {
-      if (!audioCtx) audioCtx = new AudioCtx();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
+      initAudio();
+      if (!audioCtx) return;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = type;
       osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
@@ -29,20 +42,27 @@
     } catch (e) {}
   }
 
-  // --- 2. The 8 Canonical Character Archetypes ---
+  function playLevelUpChime() {
+    playTone(523.25, 'triangle', 0.12);
+    setTimeout(() => playTone(659.25, 'triangle', 0.12), 110);
+    setTimeout(() => playTone(783.99, 'triangle', 0.15), 220);
+    setTimeout(() => playTone(1046.50, 'triangle', 0.25), 330);
+  }
+
+  // --- 2. Character Archetypes (All 8 Models) ---
   const SKINS = {
     habibi_dubai: {
       name: "habibi_dubai",
       icon: "👑",
       displayName: "Royal Habibi",
-      desc: "Dubai Gold Aviators & Silk Kandura",
+      desc: "Golden Ghutra, Regal Keffiyeh & Warm Amber Aura",
       archetype: "habibi",
       primary: "#fbbf24",
-      secondary: "#d97706",
-      bodyTop: "#ffffff",
-      bodyBottom: "#e2e8f0",
-      bodyRim: "#d4af37",
-      particleType: "coin",
+      secondary: "#f59e0b",
+      bodyTop: "#1c1409",
+      bodyBottom: "#2d1f0f",
+      bodyRim: "#fbbf24",
+      particleType: "sparkle",
       particleColor: "#fbbf24"
     },
     neo_cyber: {
@@ -119,932 +139,655 @@
       name: "obsidian_phantom",
       icon: "🖤",
       displayName: "Obsidian Phantom",
-      desc: "Stealth Pitch-Black Armor & Crimson Slit",
+      desc: "Stealth Matt-Black Chassis & Violet Eyes",
       archetype: "phantom",
-      primary: "#f43f5e",
-      secondary: "#e11d48",
-      bodyTop: "#0a0a0c",
-      bodyBottom: "#17171c",
-      bodyRim: "#f43f5e",
-      particleType: "sparkle",
-      particleColor: "#f43f5e"
-    },
-    matrix_green: {
-      name: "matrix_green",
-      icon: "⚡",
-      displayName: "Matrix Emerald",
-      desc: "Phosphor Terminal Data & Cyber Rim",
-      archetype: "matrix",
-      primary: "#34d399",
-      secondary: "#10b981",
-      bodyTop: "#0a1810",
-      bodyBottom: "#132b1d",
-      bodyRim: "#34d399",
+      primary: "#a855f7",
+      secondary: "#7e22ce",
+      bodyTop: "#08060c",
+      bodyBottom: "#120e1a",
+      bodyRim: "#a855f7",
       particleType: "star",
+      particleColor: "#a855f7"
+    },
+    celestial_dragon: {
+      name: "celestial_dragon",
+      icon: "🐉",
+      displayName: "Celestial Dragon",
+      desc: "Emerald Dragon Horns & Jade Cosmic Flames",
+      archetype: "dragon",
+      primary: "#34d399",
+      secondary: "#059669",
+      bodyTop: "#081b14",
+      bodyBottom: "#0f2e22",
+      bodyRim: "#34d399",
+      particleType: "sparkle",
       particleColor: "#34d399"
     }
   };
 
-  // --- 3. DOM References ---
-  const canvas = document.getElementById('mobilePetCanvas');
-  const ctx = canvas.getContext('2d');
-  const petStage = document.getElementById('petStage');
-  const bubbleText = document.getElementById('bubbleText');
+  let currentSkinKey = localStorage.getItem('nexus_skin') || 'habibi_dubai';
+  let currentSkin = SKINS[currentSkinKey] || SKINS.habibi_dubai;
+
+  // --- 3. DOM Elements ---
+  const navItems = document.querySelectorAll('.nav-item');
+  const tabViews = document.querySelectorAll('.tab-view');
+
+  const bondFill = document.getElementById('bondFill');
+  const bondLevelText = document.getElementById('bondLevelText');
+  const bondXpText = document.getElementById('bondXpText');
+  const miniBondText = document.getElementById('miniBondText');
+  const userBadgeBtn = document.getElementById('userBadgeBtn');
+  const userBadgeText = document.getElementById('userBadgeText');
+  const voiceToggleBtn = document.getElementById('voiceToggleBtn');
+  const voiceStatusIcon = document.getElementById('voiceStatusIcon');
+
+  const speechBubble = document.getElementById('speechBubble');
   const bubbleArchetype = document.getElementById('bubbleArchetype');
+  const bubbleText = document.getElementById('bubbleText');
   const speechWave = document.getElementById('speechWave');
   const repeatSpeechBtn = document.getElementById('repeatSpeechBtn');
+  const auraBadge = document.getElementById('auraBadge');
+
   const skinPickerBtn = document.getElementById('skinPickerBtn');
   const skinIcon = document.getElementById('skinIcon');
   const skinLabel = document.getElementById('skinLabel');
-  const userBadgeBtn = document.getElementById('userBadgeBtn');
-  const userBadgeText = document.getElementById('userBadgeText');
-  const deviceHubBtn = document.getElementById('deviceHubBtn');
-  const voiceToggleBtn = document.getElementById('voiceToggleBtn');
-  const voiceStatusIcon = document.getElementById('voiceStatusIcon');
-  const settingsBtn = document.getElementById('settingsBtn');
-  const bondLevelText = document.getElementById('bondLevelText');
-  const bondXpText = document.getElementById('bondXpText');
-  const bondFill = document.getElementById('bondFill');
+  const skinModal = document.getElementById('skinModal');
+  const closeSkinModalBtn = document.getElementById('closeSkinModalBtn');
+  const skinGrid = document.getElementById('skinGrid');
+
+  const nameModal = document.getElementById('nameModal');
+  const userNameInput = document.getElementById('userNameInput');
+  const saveNameModalBtn = document.getElementById('saveNameModalBtn');
+  const closeNameModalBtn = document.getElementById('closeNameModalBtn');
+
   const chatMessages = document.getElementById('chatMessages');
   const chatInput = document.getElementById('chatInput');
   const sendBtn = document.getElementById('sendBtn');
-  const micBtn = document.getElementById('micBtn');
-  const cameraUpload = document.getElementById('cameraUpload');
   const docUpload = document.getElementById('docUpload');
+  const cameraUpload = document.getElementById('cameraUpload');
+  const micBtn = document.getElementById('micBtn');
+  const clearChatBtn = document.getElementById('clearChatBtn');
+  const chatPersonaSelect = document.getElementById('chatPersonaSelect');
+
   const attachmentStrip = document.getElementById('attachmentStrip');
   const attachmentName = document.getElementById('attachmentName');
   const attachmentSize = document.getElementById('attachmentSize');
+  const attachmentThumbWrap = document.getElementById('attachmentThumbWrap');
+  const attachmentThumb = document.getElementById('attachmentThumb');
+  const attIcon = document.getElementById('attIcon');
   const removeAttachmentBtn = document.getElementById('removeAttachmentBtn');
-  const expandChatBtn = document.getElementById('expandChatBtn');
-  const clearChatBtn = document.getElementById('clearChatBtn');
 
-  // Modals
-  const skinModal = document.getElementById('skinModal');
-  const skinGrid = document.getElementById('skinGrid');
-  const closeSkinModalBtn = document.getElementById('closeSkinModalBtn');
-  const deviceModal = document.getElementById('deviceModal');
-  const closeDeviceModalBtn = document.getElementById('closeDeviceModalBtn');
-  const nameModal = document.getElementById('nameModal');
-  const userNameInput = document.getElementById('userNameInput');
-  const saveNameBtn = document.getElementById('saveNameBtn');
-  const closeNameModalBtn = document.getElementById('closeNameModalBtn');
-  const settingsModal = document.getElementById('settingsModal');
-  const closeModalBtn = document.getElementById('closeModalBtn');
-  const saveSettingsBtn = document.getElementById('saveSettingsBtn');
-  const groqKeyInput = document.getElementById('groqKeyInput');
-  const geminiKeyInput = document.getElementById('geminiKeyInput');
-  const openRouterKeyInput = document.getElementById('openRouterKeyInput');
-  const personaSelect = document.getElementById('personaSelect');
+  // Pet action buttons
+  const petBtn = document.getElementById('petBtn');
+  const highFiveBtn = document.getElementById('highFiveBtn');
+  const cheerBtn = document.getElementById('cheerBtn');
+  const karakBtn = document.getElementById('karakBtn');
+  const danceBtn = document.getElementById('danceBtn');
 
-  // Diagnostics elements
+  // Games DOM
+  const gameTabTtt = document.getElementById('gameTabTtt');
+  const gameTabMem = document.getElementById('gameTabMem');
+  const gameTabTrivia = document.getElementById('gameTabTrivia');
+  const gameTttSection = document.getElementById('gameTttSection');
+  const gameMemSection = document.getElementById('gameMemSection');
+  const gameTriviaSection = document.getElementById('gameTriviaSection');
+  const botSelfPlayToggle = document.getElementById('botSelfPlayToggle');
+
+  // Unlocks DOM
+  const heroRankTitle = document.getElementById('heroRankTitle');
+  const heroXpText = document.getElementById('heroXpText');
+  const heroXpFill = document.getElementById('heroXpFill');
+
+  // Settings DOM
   const diagBattery = document.getElementById('diagBattery');
   const diagBatteryBar = document.getElementById('diagBatteryBar');
   const diagMemory = document.getElementById('diagMemory');
   const diagCpu = document.getElementById('diagCpu');
   const diagNetwork = document.getElementById('diagNetwork');
   const diagStorage = document.getElementById('diagStorage');
-  const diagUserName = document.getElementById('diagUserName');
-  const diagBondLevel = document.getElementById('diagBondLevel');
+  const settingProviderSelect = document.getElementById('settingProviderSelect');
+  const geminiKeyInput = document.getElementById('geminiKeyInput');
+  const groqKeyInput = document.getElementById('groqKeyInput');
+  const openRouterKeyInput = document.getElementById('openRouterKeyInput');
+  const saveKeysBtn = document.getElementById('saveKeysBtn');
+  const settingUserNameInput = document.getElementById('settingUserNameInput');
+  const saveUserNameBtn = document.getElementById('saveUserNameBtn');
 
-  // --- 4. Application State ---
-  let activeSkinKey = localStorage.getItem('nexus_mobile_skin') || 'habibi_dubai';
-  if (!SKINS[activeSkinKey]) activeSkinKey = 'habibi_dubai';
-  let activeSkin = SKINS[activeSkinKey];
-
-  let activePersona = localStorage.getItem('nexus_mobile_persona') || 'companion';
-  let voiceEnabled = localStorage.getItem('nexus_mobile_voice') !== 'false';
-  let isSpeaking = false;
-  let lastSpokenText = "Hello! I am NEXUS, your personal AI companion. Pet me, tap high-five, or ask me anything!";
+  // Active state
+  let totalXP = parseInt(localStorage.getItem('nexus_bond_xp') || '0', 10);
   let activeAttachment = null;
-
-  // Multi-Turn Chat Conversation Memory
+  let botSelfPlayActive = false;
   let conversationHistory = [
-    { role: 'assistant', content: "Raiyan coded me! I am NEXUS, your personal autonomous AI companion on mobile. Type your question below, attach documents, tap the mic to speak, or snap photos with your camera!" }
+    { role: 'assistant', content: "Raiyan coded me! I am NEXUS, your personal autonomous AI companion. Ask me anything, attach multi-page PDFs or code, snap photos with your camera, or play games!" }
   ];
 
-  // Physics & Animation State
-  let touchX = canvas.width / 2;
-  let touchY = canvas.height / 2;
-  let currentLookX = 0;
-  let currentLookY = 0;
-  let saccadeX = 0;
-  let saccadeY = 0;
-  let nextSaccadeTime = 0;
-  let squishX = 1.0;
-  let squishY = 1.0;
-  let stateTime = 0;
-  let isTouching = false;
-  let particles = [];
+  // --- 4. Tab Navigation Engine ---
+  function switchTab(viewId) {
+    tabViews.forEach(v => v.classList.remove('active'));
+    navItems.forEach(n => n.classList.remove('active'));
 
-  // --- 5. Permanent Memory & Affection System ---
-  function getAffectionData() {
-    const xp = parseInt(localStorage.getItem('nexus_bond_xp') || '0', 10);
-    let level = 1;
-    let title = "Loyal Companion";
-    let nextThreshold = 25;
-    let prevThreshold = 0;
+    const targetView = document.getElementById(viewId);
+    if (targetView) targetView.classList.add('active');
 
-    if (xp >= 300) {
-      level = 5;
-      title = "Soulbound Partner";
-      nextThreshold = 500;
-      prevThreshold = 300;
-    } else if (xp >= 150) {
-      level = 4;
-      title = "Best Friend";
-      nextThreshold = 300;
-      prevThreshold = 150;
-    } else if (xp >= 75) {
-      level = 3;
-      title = "Trusted Ally";
-      nextThreshold = 150;
-      prevThreshold = 75;
-    } else if (xp >= 25) {
-      level = 2;
-      title = "Devoted Friend";
-      nextThreshold = 75;
-      prevThreshold = 25;
-    }
+    const targetNav = Array.from(navItems).find(n => n.dataset.view === viewId);
+    if (targetNav) targetNav.classList.add('active');
 
-    const pct = Math.min(100, Math.max(0, ((xp - prevThreshold) / (nextThreshold - prevThreshold)) * 100));
-    return { xp, level, title, nextThreshold, pct };
+    playTone(500, 'sine', 0.08);
   }
 
-  function addXP(amount) {
-    const current = parseInt(localStorage.getItem('nexus_bond_xp') || '0', 10);
-    const updated = current + amount;
-    localStorage.setItem('nexus_bond_xp', updated);
-    updateBondUI();
-    playChime(640, 'triangle', 0.15);
+  navItems.forEach(item => {
+    item.addEventListener('click', () => {
+      switchTab(item.dataset.view);
+    });
+  });
+
+  // --- 5. Bond & EXP Unlocks Engine ---
+  const LEVEL_THRESHOLDS = [
+    { level: 1, title: "Novice Companion", minXp: 0, maxXp: 25 },
+    { level: 2, title: "Arcade Master", minXp: 25, maxXp: 60 },
+    { level: 3, title: "Cyber Sage", minXp: 60, maxXp: 120 },
+    { level: 4, title: "Karak Monarch", minXp: 120, maxXp: 200 },
+    { level: 5, title: "Omnipresent Deity", minXp: 200, maxXp: 350 }
+  ];
+
+  function getLevelInfo(xp) {
+    for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
+      if (xp >= LEVEL_THRESHOLDS[i].minXp) {
+        return LEVEL_THRESHOLDS[i];
+      }
+    }
+    return LEVEL_THRESHOLDS[0];
   }
 
   function updateBondUI() {
-    const data = getAffectionData();
-    bondLevelText.textContent = `💖 Level ${data.level} • ${data.title}`;
-    bondXpText.textContent = `${data.xp} / ${data.nextThreshold} XP`;
-    bondFill.style.width = `${data.pct}%`;
-    diagBondLevel.textContent = `Level ${data.level} (${data.xp} XP)`;
-  }
+    const lvlInfo = getLevelInfo(totalXP);
+    const range = lvlInfo.maxXp - lvlInfo.minXp;
+    const progress = Math.min(Math.max(totalXP - lvlInfo.minXp, 0), range);
+    const pct = Math.round((progress / range) * 100);
 
-  function updateUserNameUI() {
-    const name = localStorage.getItem('nexus_user_name');
-    if (name) {
-      userBadgeText.textContent = `👤 ${name}`;
-      diagUserName.textContent = name;
-    } else {
-      userBadgeText.textContent = "👤 Set Name";
-      diagUserName.textContent = "Not set";
-    }
-  }
+    bondLevelText.textContent = `💖 Level ${lvlInfo.level} • ${lvlInfo.title}`;
+    bondXpText.textContent = `${totalXP} / ${lvlInfo.maxXp} XP`;
+    bondFill.style.width = `${pct}%`;
+    miniBondText.textContent = `💖 Lv.${lvlInfo.level} (${totalXP} XP)`;
 
-  // --- 6. Particle Engine ---
-  class MobileParticle {
-    constructor(x, y, type, color) {
-      this.x = x;
-      this.y = y;
-      this.type = type;
-      this.color = color;
-      this.vx = (Math.random() - 0.5) * 4.5;
-      this.vy = -Math.random() * 3.5 - 1.2;
-      this.life = 1.0;
-      this.decay = Math.random() * 0.02 + 0.015;
-      this.size = Math.random() * 8 + 6;
+    if (heroRankTitle) {
+      heroRankTitle.textContent = `👑 Level ${lvlInfo.level}: ${lvlInfo.title}`;
+      heroXpText.textContent = `${totalXP} / ${lvlInfo.maxXp} Total XP`;
+      heroXpFill.style.width = `${pct}%`;
     }
 
-    update() {
-      this.x += this.vx;
-      this.y += this.vy;
-      this.vy += 0.08;
-      this.life -= this.decay;
-    }
-
-    draw(ctx) {
-      if (this.life <= 0) return;
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, this.life);
-
-      if (this.type === 'coin') {
-        // Gold Dirham Coin
-        ctx.fillStyle = '#fbbf24';
-        ctx.strokeStyle = '#d97706';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size * 0.7, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.strokeStyle = '#92400e';
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size * 0.4, 0, Math.PI * 2);
-        ctx.stroke();
-      } else if (this.type === 'heart') {
-        // Heart particle
-        ctx.fillStyle = this.color || '#ec4899';
-        const s = this.size * 0.7;
-        ctx.beginPath();
-        ctx.moveTo(this.x, this.y);
-        ctx.bezierCurveTo(this.x - s, this.y - s, this.x - s * 1.5, this.y + s * 0.5, this.x, this.y + s * 1.4);
-        ctx.bezierCurveTo(this.x + s * 1.5, this.y + s * 0.5, this.x + s, this.y - s, this.x, this.y);
-        ctx.fill();
-      } else if (this.type === 'sparkle') {
-        // 4-point sparkle star
-        ctx.fillStyle = this.color || '#fbbf24';
-        const s = this.size * 0.8;
-        ctx.beginPath();
-        ctx.moveTo(this.x, this.y - s);
-        ctx.lineTo(this.x + s * 0.25, this.y - s * 0.25);
-        ctx.lineTo(this.x + s, this.y);
-        ctx.lineTo(this.x + s * 0.25, this.y + s * 0.25);
-        ctx.lineTo(this.x, this.y + s);
-        ctx.lineTo(this.x - s * 0.25, this.y + s * 0.25);
-        ctx.lineTo(this.x - s, this.y);
-        ctx.lineTo(this.x - s * 0.25, this.y - s * 0.25);
-        ctx.closePath();
-        ctx.fill();
+    // Update Unlock tags
+    for (let i = 2; i <= 5; i++) {
+      const tag = document.getElementById(`tagLvl${i}`);
+      const item = document.getElementById(`unlockLvl${i}`);
+      const req = LEVEL_THRESHOLDS[i - 1].minXp;
+      if (totalXP >= req) {
+        if (tag) {
+          tag.className = 'unlock-tag';
+          tag.textContent = 'UNLOCKED';
+        }
+        if (item) item.classList.add('unlocked');
       } else {
-        // Star particle
-        ctx.fillStyle = this.color || '#38bdf8';
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size * 0.5, 0, Math.PI * 2);
-        ctx.fill();
+        if (tag) {
+          tag.className = 'unlock-tag locked';
+          tag.textContent = `LOCKED (${req} XP)`;
+        }
+        if (item) item.classList.remove('unlocked');
       }
-      ctx.restore();
-    }
-  }
-
-  function spawnParticles(type, count, color) {
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
-    for (let i = 0; i < count; i++) {
-      particles.push(new MobileParticle(cx, cy, type, color));
-    }
-  }
-
-  // --- 7. Living Canvas Vector Pet Renderer (8 Archetypes) ---
-  function animate() {
-    stateTime += 0.035;
-
-    // Biological Involuntary Eye Micro-Saccades
-    if (stateTime > nextSaccadeTime) {
-      saccadeX = (Math.random() - 0.5) * 0.25;
-      saccadeY = (Math.random() - 0.5) * 0.2;
-      nextSaccadeTime = stateTime + Math.random() * 3.0 + 1.5;
     }
 
-    // Levitation Physics
-    const levitateY = Math.sin(stateTime * 2.5) * 8;
-    const bodyW = 100 * squishX;
-    const bodyH = 92 * squishY;
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2 + levitateY;
-
-    // Smooth Eye Tracking
-    const targetLookX = (touchX - cx) / (canvas.width * 0.4) + saccadeX;
-    const targetLookY = (touchY - cy) / (canvas.height * 0.4) + saccadeY;
-    currentLookX += (Math.max(-1, Math.min(1, targetLookX)) - currentLookX) * 0.12;
-    currentLookY += (Math.max(-1, Math.min(1, targetLookY)) - currentLookY) * 0.12;
-
-    // Rebound squish decay
-    squishX += (1.0 - squishX) * 0.09;
-    squishY += (1.0 - squishY) * 0.09;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // 1. Soft Ambient Ground Shadow
-    ctx.save();
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
-    ctx.beginPath();
-    ctx.ellipse(cx, canvas.height - 30, bodyW * 0.65, 12, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    ctx.save();
-    ctx.translate(cx, cy);
-
-    // 2. Archetype Layer 1: Background Features (Behind Body)
-    drawArchetypeBack(ctx, bodyW, bodyH);
-
-    // 3. Main Chassis Capsule
-    const bodyGrad = ctx.createLinearGradient(0, -bodyH * 0.5, 0, bodyH * 0.5);
-    bodyGrad.addColorStop(0, activeSkin.bodyTop);
-    bodyGrad.addColorStop(1, activeSkin.bodyBottom);
-    ctx.fillStyle = bodyGrad;
-    ctx.strokeStyle = activeSkin.bodyRim;
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, bodyW * 0.5, bodyH * 0.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // 4. Dark Visor Window
-    ctx.fillStyle = '#05070e';
-    ctx.beginPath();
-    ctx.ellipse(0, -4, bodyW * 0.38, bodyH * 0.28, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 5. Archetype Layer 2: Eyes, Aviators & Face
-    drawFaceAndEyes(ctx, bodyW, bodyH);
-
-    // 6. Archetype Layer 3: Foreground Accessories (Ghutra Top, Ears, Antennas, Wings)
-    drawArchetypeFront(ctx, bodyW, bodyH);
-
-    // 7. Dynamic Animated Mouth
-    drawMouth(ctx);
-
-    ctx.restore();
-
-    // 8. Update & Draw Active Particles
-    particles.forEach((p) => p.update());
-    particles = particles.filter((p) => p.life > 0);
-    particles.forEach((p) => p.draw(ctx));
-
-    requestAnimationFrame(animate);
+    localStorage.setItem('nexus_bond_xp', totalXP.toString());
   }
 
-  // --- Archetype Feature Drawings ---
-  function drawArchetypeBack(ctx, bw, bh) {
-    if (activeSkin.archetype === 'habibi') {
-      // Flowing Silk Ghutra Drapes behind shoulders
-      ctx.fillStyle = '#f8fafc';
-      ctx.strokeStyle = '#e2e8f0';
-      ctx.lineWidth = 1;
+  function addXP(amount, reason = "") {
+    const prevLvl = getLevelInfo(totalXP).level;
+    totalXP += amount;
+    const newLvl = getLevelInfo(totalXP).level;
 
-      // Left Drape
-      ctx.beginPath();
-      ctx.ellipse(-bw * 0.46, 12, 17, 48, -0.16, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+    updateBondUI();
 
-      // Right Drape
-      ctx.beginPath();
-      ctx.ellipse(bw * 0.46, 12, 17, 48, 0.16, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    } else if (activeSkin.archetype === 'fox') {
-      // Quantum Fox Back Tail Glow
-      const tailWiggle = Math.sin(stateTime * 3) * 6;
-      ctx.fillStyle = 'rgba(245, 158, 11, 0.35)';
-      ctx.beginPath();
-      ctx.ellipse(bw * 0.5, 18 + tailWiggle, 16, 32, 0.4, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (activeSkin.archetype === 'orb') {
-      // Neo Cyber Propulsion Fins
-      const finFlap = Math.sin(stateTime * 4.5) * 3;
-      ctx.fillStyle = activeSkin.primary;
-      ctx.beginPath();
-      ctx.ellipse(-bw * 0.52, -2 + finFlap, 6, 20, -0.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(bw * 0.52, -2 - finFlap, 6, 20, 0.2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  function drawFaceAndEyes(ctx, bw, bh) {
-    const eyeOffsetX = currentLookX * 4.5;
-    const eyeOffsetY = currentLookY * 3.5;
-
-    if (activeSkin.archetype === 'habibi') {
-      // Royal Dubai Gold Aviators
-      ctx.fillStyle = '#0f172a';
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 2.2;
-
-      // Left mirrored aviator lens
-      ctx.beginPath();
-      ctx.roundRect(-25 + eyeOffsetX, -13 + eyeOffsetY, 21, 17, [4, 4, 11, 11]);
-      ctx.fill();
-      ctx.stroke();
-
-      // Right mirrored aviator lens
-      ctx.beginPath();
-      ctx.roundRect(4 + eyeOffsetX, -13 + eyeOffsetY, 21, 17, [4, 4, 11, 11]);
-      ctx.fill();
-      ctx.stroke();
-
-      // Golden Bridge
-      ctx.beginPath();
-      ctx.moveTo(-4 + eyeOffsetX, -8 + eyeOffsetY);
-      ctx.lineTo(4 + eyeOffsetX, -8 + eyeOffsetY);
-      ctx.stroke();
-
-      // Specular Sheen Reflections
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(-21 + eyeOffsetX, -11 + eyeOffsetY);
-      ctx.lineTo(-13 + eyeOffsetX, -1 + eyeOffsetY);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(8 + eyeOffsetX, -11 + eyeOffsetY);
-      ctx.lineTo(16 + eyeOffsetX, -1 + eyeOffsetY);
-      ctx.stroke();
-
-      // 4-Point Golden Star Glint on frame edge
-      ctx.fillStyle = '#fffbeb';
-      ctx.beginPath();
-      const gx = 23 + eyeOffsetX;
-      const gy = -13 + eyeOffsetY;
-      ctx.arc(gx, gy, 2, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (activeSkin.archetype === 'phantom') {
-      // Obsidian Crimson Laser Slit
-      ctx.fillStyle = '#f43f5e';
-      ctx.shadowColor = '#f43f5e';
-      ctx.shadowBlur = 8;
-      ctx.beginPath();
-      ctx.ellipse(eyeOffsetX, -5 + eyeOffsetY, 22, 3, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
+    if (newLvl > prevLvl) {
+      playLevelUpChime();
+      spawnConfetti();
+      updateBubble(`⭐ LEVEL UP! We are now Level ${newLvl}: ${getLevelInfo(totalXP).title}! New perks unlocked! 🎉`);
     } else {
-      // Expressive Vector Visor Eyes (Blink & Emotion)
-      const blink = (Math.sin(stateTime * 1.4) > 0.96) ? 0.2 : 1.0;
-      ctx.fillStyle = activeSkin.primary;
-      ctx.shadowColor = activeSkin.primary;
-      ctx.shadowBlur = 10;
-
-      // Left Eye
-      ctx.beginPath();
-      ctx.ellipse(-15 + eyeOffsetX, -5 + eyeOffsetY, 5, 8 * blink, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Right Eye
-      ctx.beginPath();
-      ctx.ellipse(15 + eyeOffsetX, -5 + eyeOffsetY, 5, 8 * blink, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    }
-
-    // Cute Cheek Blush
-    ctx.fillStyle = 'rgba(244, 114, 182, 0.4)';
-    ctx.beginPath();
-    ctx.ellipse(-26, 4, 7, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(26, 4, 7, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  function drawArchetypeFront(ctx, bw, bh) {
-    if (activeSkin.archetype === 'habibi') {
-      // Dual Gold & Black Agal Cord on top of head
-      ctx.strokeStyle = '#18181b';
-      ctx.lineWidth = 4.5;
-      ctx.beginPath();
-      ctx.arc(0, -bh * 0.42, bw * 0.36, Math.PI, 0);
-      ctx.stroke();
-
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.arc(0, -bh * 0.42, bw * 0.36, Math.PI, 0);
-      ctx.stroke();
-
-      // Royal Gold Crest Emblem in center of agal
-      ctx.fillStyle = '#fbbf24';
-      ctx.beginPath();
-      ctx.arc(0, -bh * 0.42 - 2, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (activeSkin.archetype === 'fox') {
-      // Tall Geometric Kitsune Cyber-Fox Ears
-      for (const side of [-1, 1]) {
-        ctx.save();
-        ctx.translate(side * 28, -bh * 0.45);
-        ctx.fillStyle = '#2d1a10';
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(side * 14, -26);
-        ctx.lineTo(side * 4, 2);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        // Inner amber glow
-        ctx.fillStyle = '#f59e0b';
-        ctx.beginPath();
-        ctx.moveTo(side * 2, -2);
-        ctx.lineTo(side * 11, -20);
-        ctx.lineTo(side * 4, 0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-      }
-    } else if (activeSkin.archetype === 'cat') {
-      // Nebula Cat Ears & Starlight Halo
-      for (const side of [-1, 1]) {
-        ctx.save();
-        ctx.translate(side * 26, -bh * 0.44);
-        ctx.fillStyle = '#27193b';
-        ctx.strokeStyle = '#c084fc';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(side * 12, -20);
-        ctx.lineTo(side * 2, 2);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        // Inner pink
-        ctx.fillStyle = '#f472b6';
-        ctx.beginPath();
-        ctx.moveTo(side * 2, -2);
-        ctx.lineTo(side * 9, -15);
-        ctx.lineTo(side * 3, 0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-      }
-    } else if (activeSkin.archetype === 'mech') {
-      // Chrono Sentinel Tactical Antenna Fins
-      for (const side of [-1, 1]) {
-        ctx.fillStyle = '#60a5fa';
-        ctx.beginPath();
-        ctx.roundRect(side * 34, -bh * 0.45, side * 6, -18, 3);
-        ctx.fill();
-      }
-    } else if (activeSkin.archetype === 'phoenix') {
-      // Solar Phoenix Coronal Flare Crown
-      const crownPulse = Math.sin(stateTime * 6) * 4;
-      ctx.fillStyle = '#ef4444';
-      ctx.beginPath();
-      ctx.moveTo(-16, -bh * 0.42);
-      ctx.quadraticCurveTo(-8, -bh * 0.42 - 24 - crownPulse, 0, -bh * 0.42 - 32 - crownPulse);
-      ctx.quadraticCurveTo(8, -bh * 0.42 - 24 - crownPulse, 16, -bh * 0.42);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = '#fb923c';
-      ctx.beginPath();
-      ctx.arc(0, -bh * 0.42 - 12, 6, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (activeSkin.archetype === 'phantom') {
-      // Obsidian Stealth Armor Edge Plates
-      ctx.fillStyle = '#e11d48';
-      ctx.beginPath();
-      ctx.ellipse(-bw * 0.46, -10, 4, 18, -0.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(bw * 0.46, -10, 4, 18, 0.2, 0, Math.PI * 2);
-      ctx.fill();
+      playTone(600, 'sine', 0.1);
     }
   }
 
-  function drawMouth(ctx) {
-    ctx.strokeStyle = activeSkin.primary;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    if (isSpeaking) {
-      const open = (Math.sin(stateTime * 12) + 1) * 3;
-      ctx.arc(0, 10, 4 + open, 0, Math.PI);
-    } else {
-      ctx.arc(0, 8, 4, 0.1 * Math.PI, 0.9 * Math.PI);
-    }
-    ctx.stroke();
-  }
-
-  // --- 8. Touch & Squish Interaction ---
-  function getCanvasCoords(e) {
-    const rect = canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return {
-      x: (clientX - rect.left) * (canvas.width / rect.width),
-      y: (clientY - rect.top) * (canvas.height / rect.height)
-    };
-  }
-
-  function onTouchStart(e) {
-    isTouching = true;
-    const pos = getCanvasCoords(e);
-    touchX = pos.x;
-    touchY = pos.y;
-    squishX = 1.18;
-    squishY = 0.82;
-    spawnParticles(activeSkin.particleType, 8, activeSkin.primary);
-    if (navigator.vibrate) navigator.vibrate(25);
-  }
-
-  function onTouchMove(e) {
-    if (!isTouching) return;
-    const pos = getCanvasCoords(e);
-    touchX = pos.x;
-    touchY = pos.y;
-    if (Math.random() < 0.2) {
-      spawnParticles(activeSkin.particleType, 1, activeSkin.primary);
-    }
-  }
-
-  function onTouchEnd() {
-    isTouching = false;
-    touchX = canvas.width / 2;
-    touchY = canvas.height / 2;
-    squishX = 0.88;
-    squishY = 1.14;
-    addXP(2);
-  }
-
-  canvas.addEventListener('touchstart', onTouchStart, { passive: true });
-  canvas.addEventListener('touchmove', onTouchMove, { passive: true });
-  canvas.addEventListener('touchend', onTouchEnd, { passive: true });
-  canvas.addEventListener('mousedown', onTouchStart);
-  window.addEventListener('mousemove', onTouchMove);
-  window.addEventListener('mouseup', onTouchEnd);
-
-  // --- 9. Affection Action Handlers ---
-  document.getElementById('petBtn').addEventListener('click', () => {
-    squishX = 1.25;
-    squishY = 0.78;
-    spawnParticles(activeSkin.particleType, 12, activeSkin.primary);
-    addXP(5);
-    if (navigator.vibrate) navigator.vibrate([25, 30, 25]);
-    updateBubble("I love your touch! 💖 Feeling happy, energized, and loyal!");
-  });
-
-  document.getElementById('highFiveBtn').addEventListener('click', () => {
-    squishX = 1.3;
-    squishY = 0.72;
-    spawnParticles('star', 16, '#38bdf8');
-    spawnParticles(activeSkin.particleType, 12, activeSkin.primary);
-    addXP(10);
-    if (navigator.vibrate) navigator.vibrate([40, 50, 40]);
-    updateBubble("High-five! ✋ +10 XP earned! We make an unbeatable team!");
-    speakAloud("High-five! Ten X P earned! We make an unbeatable team!");
-  });
-
-  document.getElementById('cheerBtn').addEventListener('click', () => {
-    spawnParticles('coin', 22, '#fbbf24');
-    spawnParticles('star', 18, '#38bdf8');
-    addXP(5);
-    if (navigator.vibrate) navigator.vibrate([40, 40, 40]);
-    updateBubble("Yaaay! Celebrating you! ⭐ Prosperity, victory, and greatness!");
-    speakAloud("Yaaay! Celebrating you! Prosperity, victory, and greatness!");
-  });
-
-  document.getElementById('karakBtn').addEventListener('click', () => {
-    spawnParticles('heart', 10, '#fbbf24');
-    addXP(5);
-    updateBubble("Ah, warm Karak Chai with cardamom and saffron! ☕ A cup of blessings!");
-    speakAloud("Ah, warm Karak Chai with cardamom and saffron! A cup of blessings!");
-  });
-
-  document.getElementById('timeBtn').addEventListener('click', () => {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const dateStr = now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-    updateBubble(`🕒 Current time is ${timeStr} on ${dateStr}. Ready to assist!`);
-    speakAloud(`The time is ${timeStr}.`);
-  });
-
-  // --- 10. Speech & Voice Engine ---
-  function updateBubble(text) {
+  // --- 6. Speech Bubble & Living Pet Canvas Engine ---
+  let bubbleTimeout = null;
+  function updateBubble(text, durationMs = 5000) {
     bubbleText.textContent = text;
-    lastSpokenText = text;
+    speechBubble.style.display = 'block';
+    if (bubbleTimeout) clearTimeout(bubbleTimeout);
+    if (durationMs > 0) {
+      bubbleTimeout = setTimeout(() => {}, durationMs);
+    }
   }
 
-  function speakAloud(text) {
-    if (!voiceEnabled || !('speechSynthesis' in window)) return;
+  function speakText(text) {
+    if (!voiceEnabled || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
 
-    // Clean code and markdown syntax
-    const cleanText = text
-      .replace(/```[\s\S]*?```/g, 'Code block omitted.')
-      .replace(/[\*\_#`]/g, '')
-      .replace(/\[Attached File:.*?\]/g, '');
+    const clean = text.replace(/[*_#`[\]()]/g, '').trim();
+    if (!clean) return;
 
-    const utter = new SpeechSynthesisUtterance(cleanText);
-    utter.rate = 1.0;
-    utter.pitch = 1.04;
-    utter.onstart = () => {
-      isSpeaking = true;
-      speechWave.style.display = 'inline-flex';
-    };
-    utter.onend = () => {
-      isSpeaking = false;
-      speechWave.style.display = 'none';
-    };
-    utter.onerror = () => {
-      isSpeaking = false;
-      speechWave.style.display = 'none';
-    };
+    const utter = new SpeechSynthesisUtterance(clean);
+    utter.rate = 1.05;
+    utter.pitch = 1.0;
+
+    speechWave.style.display = 'flex';
+    utter.onend = () => { speechWave.style.display = 'none'; };
+    utter.onerror = () => { speechWave.style.display = 'none'; };
 
     window.speechSynthesis.speak(utter);
   }
 
   repeatSpeechBtn.addEventListener('click', () => {
-    speakAloud(lastSpokenText);
+    speakText(bubbleText.textContent);
   });
 
-  voiceToggleBtn.addEventListener('click', () => {
-    voiceEnabled = !voiceEnabled;
-    localStorage.setItem('nexus_mobile_voice', voiceEnabled);
-    voiceStatusIcon.textContent = voiceEnabled ? '🔊' : '🔇';
-    if (!voiceEnabled && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      isSpeaking = false;
-      speechWave.style.display = 'none';
+  // Canvas Pet Animation
+  const canvas = document.getElementById('mobilePetCanvas');
+  const ctx = canvas.getContext('2d');
+  let petAnimTime = 0;
+  let petSquish = 1.0;
+  let petEmotion = 'idle';
+  let cursorX = 180, cursorY = 140;
+  let particles = [];
+
+  function drawPet() {
+    petAnimTime += 0.04;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2 + Math.sin(petAnimTime * 2) * 6;
+    const r = 68 * petSquish;
+
+    // Body radial glow
+    const grad = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r);
+    grad.addColorStop(0, currentSkin.bodyBottom);
+    grad.addColorStop(0.8, currentSkin.bodyTop);
+    grad.addColorStop(1, currentSkin.bodyRim);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.shadowColor = currentSkin.primary;
+    ctx.shadowBlur = 18;
+    ctx.fill();
+    ctx.restore();
+
+    // Archetype decorative features
+    if (currentSkin.archetype === 'habibi') {
+      // Golden Ghutra Headband & Regal Keffiyeh
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - r * 0.72, r * 0.88, 14, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#1c1917';
+      ctx.fill();
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = '#fbbf24';
+      ctx.stroke();
+      ctx.restore();
+    } else if (currentSkin.archetype === 'fox') {
+      // Fox cyber ears
+      ctx.fillStyle = currentSkin.primary;
+      ctx.beginPath();
+      ctx.moveTo(cx - 45, cy - 40);
+      ctx.lineTo(cx - 65, cy - 85);
+      ctx.lineTo(cx - 20, cy - 60);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx + 45, cy - 40);
+      ctx.lineTo(cx + 65, cy - 85);
+      ctx.lineTo(cx + 20, cy - 60);
+      ctx.fill();
+    } else if (currentSkin.archetype === 'cat') {
+      // Cat ears
+      ctx.fillStyle = currentSkin.primary;
+      ctx.beginPath();
+      ctx.moveTo(cx - 35, cy - 45);
+      ctx.lineTo(cx - 50, cy - 80);
+      ctx.lineTo(cx - 15, cy - 60);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx + 35, cy - 45);
+      ctx.lineTo(cx + 50, cy - 80);
+      ctx.lineTo(cx + 15, cy - 60);
+      ctx.fill();
     }
-  });
 
-  // Web Speech Voice Input
-  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let recognition = null;
-  if (SpeechRec) {
-    recognition = new SpeechRec();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = 'en-US';
+    // Expressive Eyes
+    const eyeOffsetX = (cursorX - cx) * 0.05;
+    const eyeOffsetY = (cursorY - cy) * 0.04;
+    const blink = Math.sin(petAnimTime * 0.7) > 0.96;
 
-    recognition.onstart = () => {
-      micBtn.classList.add('active');
-      updateBubble("🎙️ Listening to your voice... Speak now!");
-    };
-    recognition.onresult = (e) => {
-      const transcript = e.results[0][0].transcript;
-      chatInput.value = transcript;
-      handleSend();
-    };
-    recognition.onend = () => micBtn.classList.remove('active');
-    recognition.onerror = () => {
-      micBtn.classList.remove('active');
-      updateBubble("Could not detect microphone voice. Tap the mic and try again!");
-    };
+    if (blink) {
+      ctx.strokeStyle = currentSkin.primary;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(cx - 28, cy - 4);
+      ctx.lineTo(cx - 12, cy - 4);
+      ctx.moveTo(cx + 12, cy - 4);
+      ctx.lineTo(cx + 28, cy - 4);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = currentSkin.primary;
+      ctx.shadowColor = currentSkin.primary;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.ellipse(cx - 20 + eyeOffsetX, cy - 6 + eyeOffsetY, 7, 10, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + 20 + eyeOffsetX, cy - 6 + eyeOffsetY, 7, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Mouth / smile
+    ctx.strokeStyle = currentSkin.primary;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy + 12, 10, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.stroke();
+
+    // Floating burst particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= 0.025;
+      if (p.life <= 0) {
+        particles.splice(i, 1);
+        continue;
+      }
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.life;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    }
+
+    if (petSquish < 1.0) petSquish += 0.03;
+    requestAnimationFrame(drawPet);
+  }
+  requestAnimationFrame(drawPet);
+
+  function spawnBurst(type = 'heart', count = 12) {
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+      const speed = 2 + Math.random() * 3.5;
+      particles.push({
+        x: cx,
+        y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1.0,
+        size: 3 + Math.random() * 4,
+        color: currentSkin.primary
+      });
+    }
   }
 
-  micBtn.addEventListener('click', () => {
-    if (!recognition) {
-      alert("Microphone recognition is supported on Chrome, Safari, and modern mobile browsers!");
-      return;
-    }
-    try { recognition.start(); } catch (e) { recognition.stop(); }
-  });
-
-  // --- 11. Markdown & Message Formatter ---
-  function escapeHTML(str) {
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+  function spawnConfetti() {
+    spawnBurst('star', 30);
   }
 
-  function renderMarkdown(rawText) {
-    if (!rawText) return "";
+  // Pet Canvas Interaction (Petting)
+  canvas.addEventListener('pointerdown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    cursorX = e.clientX - rect.left;
+    cursorY = e.clientY - rect.top;
+    petSquish = 0.82;
+    spawnBurst('heart', 14);
+    playTone(650, 'sine', 0.12);
+    addXP(5, "Petting Companion");
+    updateBubble("Hehehe, that tickles! 💖 Affection acknowledged!");
+  });
 
-    // 1. Extract fenced code blocks first
-    const codeBlocks = [];
-    const fencedPattern = /```([a-zA-Z0-9_\-\+]*)\n([\s\S]*?)```/g;
-    let processed = rawText.replace(fencedPattern, (match, lang, code) => {
-      const idx = codeBlocks.length;
-      const langLabel = (lang || "CODE").toUpperCase();
-      const escapedCode = escapeHTML(code.trim());
-      codeBlocks.push(`
-        <div class="mobile-code-card">
-          <div class="mobile-code-header">
-            <span>${langLabel}</span>
-            <button class="copy-code-btn" data-code="${encodeURIComponent(code.trim())}">📋 Copy</button>
-          </div>
-          <pre class="mobile-code-body"><code>${escapedCode}</code></pre>
+  // Pet Action Bar Buttons
+  petBtn.addEventListener('click', () => {
+    petSquish = 0.84;
+    spawnBurst('heart', 16);
+    addXP(5, "Petting");
+    updateBubble("I feel loved and happy! 💖 (+5 XP)");
+  });
+
+  highFiveBtn.addEventListener('click', () => {
+    spawnBurst('sparkle', 20);
+    playTone(800, 'triangle', 0.15);
+    addXP(10, "High-Five");
+    updateBubble("High five! ✋ Unstoppable teamwork! (+10 XP)");
+  });
+
+  cheerBtn.addEventListener('click', () => {
+    spawnBurst('star', 22);
+    addXP(5, "Cheer");
+    updateBubble("You've got this! Reaching for the stars! ⭐ (+5 XP)");
+  });
+
+  karakBtn.addEventListener('click', () => {
+    spawnBurst('sparkle', 24);
+    addXP(15, "Karak Chai");
+    updateBubble("Ah, a steaming royal cup of Karak Chai! ☕ Pure energy! (+15 XP)");
+  });
+
+  danceBtn.addEventListener('click', () => {
+    petSquish = 0.75;
+    spawnBurst('star', 25);
+    addXP(10, "Dance");
+    updateBubble("Look at those autonomous moves! 💃 (+10 XP)");
+  });
+
+  // Archetype Skin Switcher
+  function renderSkinGrid() {
+    skinGrid.innerHTML = '';
+    Object.values(SKINS).forEach(s => {
+      const card = document.createElement('div');
+      card.className = `skin-card ${s.name === currentSkinKey ? 'active' : ''}`;
+      card.innerHTML = `
+        <div class="skin-card-header">
+          <span>${s.icon}</span>
+          <span style="color:${s.primary};">${s.displayName}</span>
         </div>
-      `);
-      return `@@@CODE_BLOCK_${idx}@@@`;
+        <div class="skin-card-desc">${s.desc}</div>
+      `;
+      card.addEventListener('click', () => {
+        currentSkinKey = s.name;
+        currentSkin = s;
+        localStorage.setItem('nexus_skin', s.name);
+        skinIcon.textContent = s.icon;
+        skinLabel.textContent = s.displayName;
+        bubbleArchetype.textContent = `${s.icon} ${s.displayName}`;
+        auraBadge.textContent = `✨ ${s.displayName} Aura`;
+        skinModal.style.display = 'none';
+        spawnBurst('sparkle', 20);
+        updateBubble(`Switched archetype to ${s.displayName}!`);
+        renderSkinGrid();
+      });
+      skinGrid.appendChild(card);
     });
-
-    // 2. Escape remaining non-code text
-    processed = escapeHTML(processed);
-
-    // 3. Format bold, italics, inline code, lists
-    processed = processed
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
-      .replace(/^\s*[\-\*]\s+(.*)$/gm, '<li>$1</li>')
-      .replace(/^\s*\d+\.\s+(.*)$/gm, '<li>$1</li>')
-      .replace(/\n\n/g, '<br><br>');
-
-    // 4. Re-insert code blocks
-    codeBlocks.forEach((block, idx) => {
-      processed = processed.replace(`@@@CODE_BLOCK_${idx}@@@`, block);
-    });
-
-    return processed;
   }
 
-  function appendChatMessage(role, text, isStreaming = false) {
+  skinPickerBtn.addEventListener('click', () => {
+    renderSkinGrid();
+    skinModal.style.display = 'flex';
+  });
+  closeSkinModalBtn.addEventListener('click', () => { skinModal.style.display = 'none'; });
+
+  // --- 7. Multi-Format Document & PDF Reader ---
+  docUpload.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const ext = file.name.split('.').pop().toLowerCase();
+    attachmentName.textContent = file.name;
+    attachmentSize.textContent = `${Math.round(file.size / 1024)} KB`;
+    attachmentThumbWrap.style.display = 'none';
+
+    // 1. PDF File Extraction using Mozilla PDF.js
+    if (ext === 'pdf' || file.type === 'application/pdf') {
+      attIcon.textContent = '📑';
+      attachmentStrip.style.display = 'block';
+      updateBubble(`Analyzing multi-page PDF "${file.name}"...`);
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        if (typeof pdfjsLib !== 'undefined') {
+          const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+          const pdf = await loadingTask.promise;
+          let fullText = `[PDF Document: "${file.name}" - ${pdf.numPages} Pages]\n`;
+
+          for (let pageNum = 1; pageNum <= Math.min(pdf.numPages, 30); pageNum++) {
+            const page = await pdf.getPage(pageNum);
+            const textContent = await page.getTextContent();
+            const pageString = textContent.items.map(item => item.str).join(' ');
+            fullText += `\n--- Page ${pageNum} ---\n${pageString}\n`;
+          }
+
+          activeAttachment = {
+            name: file.name,
+            type: 'PDF Document',
+            size: Math.round(file.size / 1024),
+            pageCount: pdf.numPages,
+            content: fullText
+          };
+          updateBubble(`✅ Extracted ${pdf.numPages} pages from "${file.name}"! Ready to inspect.`);
+        } else {
+          throw new Error("PDF.js library not loaded");
+        }
+      } catch (err) {
+        console.warn("PDF extraction fallback:", err);
+        const text = await file.text();
+        activeAttachment = {
+          name: file.name,
+          type: 'PDF Document (Raw)',
+          size: Math.round(file.size / 1024),
+          content: text
+        };
+        updateBubble(`Attached "${file.name}". Ready to analyze.`);
+      }
+    }
+    // 2. Code, Text, CSV Documents
+    else {
+      attIcon.textContent = (ext === 'csv') ? '📊' : '📄';
+      attachmentStrip.style.display = 'block';
+      const text = await file.text();
+      activeAttachment = {
+        name: file.name,
+        type: `Document (.${ext})`,
+        size: Math.round(file.size / 1024),
+        content: text
+      };
+      updateBubble(`📎 Attached "${file.name}"! Type a prompt or tap send.`);
+    }
+
+    playTone(700, 'sine', 0.12);
+  });
+
+  // Camera & Image Upload with Multimodal Preview
+  cameraUpload.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target.result;
+      const base64 = dataUrl.split(',')[1];
+
+      activeAttachment = {
+        name: file.name,
+        type: 'Image (Multimodal Vision)',
+        isImage: true,
+        mimeType: file.type || 'image/jpeg',
+        size: Math.round(file.size / 1024),
+        base64: base64,
+        dataUrl: dataUrl
+      };
+
+      attachmentName.textContent = file.name;
+      attachmentSize.textContent = `${activeAttachment.size} KB (Vision)`;
+      attachmentThumb.src = dataUrl;
+      attachmentThumbWrap.style.display = 'block';
+      attIcon.textContent = '📷';
+      attachmentStrip.style.display = 'block';
+
+      updateBubble(`📷 Captured photo "${file.name}"! Ask NEXUS anything about this image.`);
+      playTone(750, 'sine', 0.12);
+    };
+    reader.readAsDataURL(file);
+  });
+
+  removeAttachmentBtn.addEventListener('click', () => {
+    activeAttachment = null;
+    attachmentStrip.style.display = 'none';
+    docUpload.value = '';
+    cameraUpload.value = '';
+  });
+
+  // --- 8. AI Chat Stream Engine ---
+  function appendChatMessage(role, text) {
     const msgDiv = document.createElement('div');
     msgDiv.className = `chat-msg ${role}`;
     
-    const formatted = renderMarkdown(text);
+    // Markdown-like code formatting
+    let formatted = text
+      .replace(/```([a-z]*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br>');
+
     msgDiv.innerHTML = `
       <div class="msg-bubble">
-        ${formatted}
-        ${isStreaming ? '<span class="typing-cursor"></span>' : ''}
+        ${role === 'assistant' ? '<strong>✦ NEXUS:</strong> ' : ''}${formatted}
       </div>
-      ${role === 'assistant' && !isStreaming ? `
-        <div class="msg-actions">
-          <button class="msg-action-btn copy-msg-btn">📋 Copy</button>
-          <button class="msg-action-btn speak-msg-btn">🔊 Speak</button>
-          <button class="msg-action-btn retry-msg-btn">🔄 Retry</button>
-        </div>
-      ` : ''}
     `;
-
-    // Attach copy code listeners
-    msgDiv.querySelectorAll('.copy-code-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const rawCode = decodeURIComponent(btn.getAttribute('data-code'));
-        navigator.clipboard.writeText(rawCode).then(() => {
-          btn.textContent = "✓ Copied!";
-          setTimeout(() => { btn.textContent = "📋 Copy"; }, 1500);
-        });
-      });
-    });
-
-    // Attach message toolbar listeners
-    if (role === 'assistant' && !isStreaming) {
-      const copyBtn = msgDiv.querySelector('.copy-msg-btn');
-      if (copyBtn) {
-        copyBtn.addEventListener('click', () => {
-          navigator.clipboard.writeText(text).then(() => {
-            copyBtn.textContent = "✓ Copied!";
-            setTimeout(() => { copyBtn.textContent = "📋 Copy"; }, 1500);
-          });
-        });
-      }
-      const speakBtn = msgDiv.querySelector('.speak-msg-btn');
-      if (speakBtn) {
-        speakBtn.addEventListener('click', () => speakAloud(text));
-      }
-      const retryBtn = msgDiv.querySelector('.retry-msg-btn');
-      if (retryBtn) {
-        retryBtn.addEventListener('click', () => {
-          // Remove last assistant turn and re-query
-          if (conversationHistory.length > 1) {
-            conversationHistory.pop();
-            const lastUserMsg = conversationHistory[conversationHistory.length - 1];
-            if (lastUserMsg) {
-              chatInput.value = lastUserMsg.content;
-              handleSend();
-            }
-          }
-        });
-      }
-    }
-
     chatMessages.appendChild(msgDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-    return msgDiv;
   }
 
-  // --- 12. Send & Streaming AI Pipeline ---
   async function handleSend() {
     const query = chatInput.value.trim();
     if (!query && !activeAttachment) return;
 
     chatInput.value = '';
     const attCopy = activeAttachment ? { ...activeAttachment } : null;
-    clearAttachment();
 
-    // Append to UI & Conversation History
-    const userDisplay = attCopy ? `📎 [${attCopy.name}]\n\n${query}` : query;
-    appendChatMessage('user', userDisplay);
+    // Reset attachment bar
+    activeAttachment = null;
+    attachmentStrip.style.display = 'none';
+    docUpload.value = '';
+    cameraUpload.value = '';
+
+    // Render user message in chat
+    let userMsgText = query;
+    if (attCopy) {
+      userMsgText += (userMsgText ? '<br>' : '') + `<em>[Attached: ${attCopy.name} (${attCopy.type})]</em>`;
+    }
+    appendChatMessage('user', userMsgText);
+
     conversationHistory.push({ role: 'user', content: query || `Inspect attached ${attCopy?.name}` });
 
-    updateBubble("✦ Thinking...");
-    playChime(480, 'sine', 0.1);
-
-    // Create temporary streaming placeholder
-    const streamDiv = appendChatMessage('assistant', "", true);
-    const bubbleEl = streamDiv.querySelector('.msg-bubble');
+    updateBubble("Thinking with Frontier AI...");
+    playTone(550, 'sine', 0.08);
 
     try {
-      const answer = await window.NexusMobileAI.queryAI(conversationHistory, activePersona, attCopy);
-      
-      // Streaming typewriter effect
-      let currentIdx = 0;
-      const stepInterval = Math.max(15, Math.min(35, 1200 / answer.length));
-      
-      const timer = setInterval(() => {
-        currentIdx += 3;
-        if (currentIdx >= answer.length) {
-          clearInterval(timer);
-          streamDiv.remove();
-          appendChatMessage('assistant', answer);
-          conversationHistory.push({ role: 'assistant', content: answer });
-          updateBubble(answer.length > 140 ? answer.substring(0, 140) + "..." : answer);
-          if (voiceEnabled) speakAloud(answer);
-          addXP(3);
-        } else {
-          bubbleEl.innerHTML = renderMarkdown(answer.substring(0, currentIdx)) + '<span class="typing-cursor"></span>';
-          chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-      }, stepInterval);
+      const persona = chatPersonaSelect.value;
+      const reply = await window.NexusMobileAI.queryAI(conversationHistory, persona, attCopy);
 
+      appendChatMessage('assistant', reply);
+      conversationHistory.push({ role: 'assistant', content: reply });
+
+      updateBubble(reply.substring(0, 140));
+      speakText(reply);
+      addXP(5, "AI Query");
     } catch (err) {
-      streamDiv.remove();
-      const errMsg = "I encountered an issue processing that. Please try again!";
-      appendChatMessage('assistant', errMsg);
-      updateBubble(errMsg);
+      console.error("AI Query Error:", err);
+      appendChatMessage('assistant', "I encountered an error querying the model. Please check your network connection.");
     }
   }
 
@@ -1053,241 +796,412 @@
     if (e.key === 'Enter') handleSend();
   });
 
-  // --- 13. File & Document Upload ---
-  docUpload.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      activeAttachment = {
-        name: file.name,
-        type: file.type || 'text/plain',
-        size: Math.round(file.size / 1024),
-        content: event.target.result
-      };
-      attachmentName.textContent = activeAttachment.name;
-      attachmentSize.textContent = `${activeAttachment.size} KB`;
-      attachmentStrip.style.display = 'block';
-      updateBubble(`📎 Attached "${file.name}"! Type a prompt or tap send to analyze.`);
-      playChime(600, 'sine', 0.12);
-    };
-    reader.readAsText(file);
-  });
-
-  function clearAttachment() {
-    activeAttachment = null;
-    attachmentStrip.style.display = 'none';
-    docUpload.value = '';
-  }
-  removeAttachmentBtn.addEventListener('click', clearAttachment);
-
-  // Camera Photo Upload
-  cameraUpload.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      appendChatMessage('user', `📷 Captured photo: <strong>${file.name}</strong> (${Math.round(file.size / 1024)} KB)`);
-      updateBubble("Analyzing photo with AI vision...");
-      setTimeout(() => {
-        const reply = `I received your photo "${file.name}"! Looking sharp! What would you like to explore about this image?`;
-        appendChatMessage('assistant', reply);
-        conversationHistory.push({ role: 'assistant', content: reply });
-        updateBubble(reply);
-        speakAloud(reply);
-        triggerPetAction();
-      }, 700);
-    }
-  });
-
-  // Expand / Collapse Chat Drawer
-  let isChatExpanded = false;
-  expandChatBtn.addEventListener('click', () => {
-    isChatExpanded = !isChatExpanded;
-    const drawer = document.getElementById('chatDrawer');
-    if (isChatExpanded) {
-      drawer.classList.add('expanded');
-      expandChatBtn.textContent = '↕️ Minimize';
-    } else {
-      drawer.classList.remove('expanded');
-      expandChatBtn.textContent = '↕️ Expand';
-    }
-  });
-
   clearChatBtn.addEventListener('click', () => {
+    chatMessages.innerHTML = '';
     conversationHistory = [
-      { role: 'assistant', content: "Chat cleared. Ready for your next adventure!" }
+      { role: 'assistant', content: "Raiyan coded me! I am NEXUS, your personal autonomous AI companion." }
     ];
-    chatMessages.innerHTML = `
-      <div class="chat-msg assistant">
-        <div class="msg-bubble">
-          <strong>✦ NEXUS:</strong> Chat cleared. Ready for your next adventure!
-        </div>
-      </div>
-    `;
-    updateBubble("Chat history cleared.");
+    appendChatMessage('assistant', conversationHistory[0].content);
   });
 
-  // --- 14. Skin Archetype Picker (All 8 Models) ---
-  function populateSkinGrid() {
-    skinGrid.innerHTML = '';
-    Object.keys(SKINS).forEach((key) => {
-      const s = SKINS[key];
-      const card = document.createElement('div');
-      card.className = `skin-card ${key === activeSkinKey ? 'active' : ''}`;
-      card.innerHTML = `
-        <div class="skin-card-icon">${s.icon}</div>
-        <div class="skin-card-title">${s.displayName}</div>
-        <div class="skin-card-desc">${s.desc}</div>
-      `;
-      card.addEventListener('click', () => {
-        setSkin(key);
-        skinModal.style.display = 'none';
-      });
-      skinGrid.appendChild(card);
+  // Speech Recognition (Microphone STT)
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRecognition) {
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      chatInput.value = transcript;
+      handleSend();
+    };
+
+    micBtn.addEventListener('click', () => {
+      playTone(600, 'sine', 0.1);
+      updateBubble("Listening... speak now! 🎙️");
+      recognition.start();
+    });
+  } else {
+    micBtn.addEventListener('click', () => {
+      updateBubble("Microphone STT not supported on this browser.");
     });
   }
 
-  function setSkin(key) {
-    if (!SKINS[key]) return;
-    activeSkinKey = key;
-    activeSkin = SKINS[key];
-    localStorage.setItem('nexus_mobile_skin', key);
+  // --- 9. Arcade & Brain Games Suite ---
+  // Subtab switching
+  gameTabTtt.addEventListener('click', () => {
+    gameTabTtt.classList.add('active');
+    gameTabMem.classList.remove('active');
+    gameTabTrivia.classList.remove('active');
+    gameTttSection.style.display = 'flex';
+    gameMemSection.style.display = 'none';
+    gameTriviaSection.style.display = 'none';
+  });
+  gameTabMem.addEventListener('click', () => {
+    gameTabMem.classList.add('active');
+    gameTabTtt.classList.remove('active');
+    gameTabTrivia.classList.remove('active');
+    gameMemSection.style.display = 'flex';
+    gameTttSection.style.display = 'none';
+    gameTriviaSection.style.display = 'none';
+  });
+  gameTabTrivia.addEventListener('click', () => {
+    gameTabTrivia.classList.add('active');
+    gameTabTtt.classList.remove('active');
+    gameTabMem.classList.remove('active');
+    gameTriviaSection.style.display = 'flex';
+    gameTttSection.style.display = 'none';
+    gameMemSection.style.display = 'none';
+  });
 
-    skinIcon.textContent = activeSkin.icon;
-    skinLabel.textContent = activeSkin.displayName.split(' ')[0];
-    bubbleArchetype.textContent = `${activeSkin.icon} ${activeSkin.displayName}`;
-    
-    // Update ambient glow colors
-    document.getElementById('orbTop').style.background = activeSkin.primary + '22';
-    document.getElementById('orbBottom').style.background = activeSkin.secondary + '1c';
+  // Autonomous Bot Self-Play Toggle
+  botSelfPlayToggle.addEventListener('change', (e) => {
+    botSelfPlayActive = e.target.checked;
+    if (botSelfPlayActive) {
+      playTone(750, 'triangle', 0.2);
+      updateBubble("🤖 Bot Self-Play activated! I will now play and gain idle XP!");
+      runBotSelfPlayStep();
+    } else {
+      updateBubble("Bot Self-Play paused.");
+    }
+  });
 
-    spawnParticles(activeSkin.particleType, 16, activeSkin.primary);
-    playChime(700, 'sine', 0.15);
-    updateBubble(`Appearance changed to ${activeSkin.displayName}!`);
+  function runBotSelfPlayStep() {
+    if (!botSelfPlayActive) return;
+
+    if (gameTttSection.style.display !== 'none') {
+      // Step in Tic-Tac-Toe
+      if (tttGameOver) {
+        resetTtt();
+      } else {
+        const emptyCells = tttBoard.map((val, idx) => val === '' ? idx : null).filter(v => v !== null);
+        if (emptyCells.length > 0) {
+          const move = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+          makeTttMove(move, tttCurrentPlayer);
+        }
+      }
+    }
+
+    setTimeout(runBotSelfPlayStep, 1100);
   }
 
-  skinPickerBtn.addEventListener('click', () => {
-    populateSkinGrid();
-    skinModal.style.display = 'flex';
-  });
-  closeSkinModalBtn.addEventListener('click', () => skinModal.style.display = 'none');
+  // 1. Tic-Tac-Toe Game
+  const tttStatus = document.getElementById('tttStatus');
+  const tttDialogue = document.getElementById('tttDialogue');
+  const tttResetBtn = document.getElementById('tttResetBtn');
+  const tttCells = document.querySelectorAll('.ttt-cell');
 
-  // --- 15. Device Command Center & Diagnostics ---
-  async function refreshDiagnostics() {
-    // Battery
-    if ('getBattery' in navigator) {
-      try {
-        const bat = await navigator.getBattery();
-        const levelPct = Math.round(bat.level * 100);
-        diagBattery.textContent = `${levelPct}% (${bat.charging ? '⚡ Charging' : 'On Battery'})`;
-        diagBatteryBar.style.width = `${levelPct}%`;
-      } catch (e) {
-        diagBattery.textContent = "Supported";
+  let tttBoard = ['', '', '', '', '', '', '', '', ''];
+  let tttCurrentPlayer = 'X';
+  let tttGameOver = false;
+
+  function checkTttWinner(board) {
+    const lines = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
+    ];
+    for (const [a, b, c] of lines) {
+      if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+        return board[a];
       }
-    } else {
-      diagBattery.textContent = "Standard AC/Battery";
-      diagBatteryBar.style.width = "85%";
+    }
+    if (board.every(cell => cell !== '')) return 'Tie';
+    return null;
+  }
+
+  function makeTttMove(idx, player) {
+    if (tttBoard[idx] !== '' || tttGameOver) return;
+    tttBoard[idx] = player;
+    const cell = tttCells[idx];
+    cell.textContent = player;
+    cell.style.color = (player === 'X') ? '#38bdf8' : '#fbbf24';
+    playTone(player === 'X' ? 600 : 750, 'sine', 0.1);
+
+    const winner = checkTttWinner(tttBoard);
+    if (winner) {
+      tttGameOver = true;
+      if (winner === 'Tie') {
+        tttStatus.textContent = "🤝 Draw game! Well played!";
+        tttDialogue.textContent = 'NEXUS: "Stalemate! Our logic grids collided equally."';
+        addXP(10, "Tic-Tac-Toe Tie");
+      } else if (winner === 'X') {
+        tttStatus.textContent = "🏆 Player X Wins!";
+        tttDialogue.textContent = 'NEXUS: "Incredible flank! You pierced my defense!"';
+        spawnBurst('star', 20);
+        addXP(25, "Tic-Tac-Toe Win");
+      } else {
+        tttStatus.textContent = "🤖 NEXUS (O) Wins!";
+        tttDialogue.textContent = 'NEXUS: "Three in a row! Tactical victory."';
+        addXP(15, "Tic-Tac-Toe Match");
+      }
+      return;
     }
 
-    // Memory (RAM)
-    if ('deviceMemory' in navigator) {
-      diagMemory.textContent = `~${navigator.deviceMemory} GB RAM`;
+    tttCurrentPlayer = (player === 'X') ? 'O' : 'X';
+    tttStatus.textContent = `Turn: Player ${tttCurrentPlayer}`;
+
+    // Pet AI counter-move if playing human vs pet
+    if (!botSelfPlayActive && tttCurrentPlayer === 'O' && !tttGameOver) {
+      setTimeout(() => {
+        const empty = tttBoard.map((v, i) => v === '' ? i : null).filter(v => v !== null);
+        if (empty.length > 0) {
+          const petMove = empty[Math.floor(Math.random() * empty.length)];
+          makeTttMove(petMove, 'O');
+        }
+      }, 500);
+    }
+  }
+
+  tttCells.forEach(cell => {
+    cell.addEventListener('click', () => {
+      const idx = parseInt(cell.dataset.idx, 10);
+      makeTttMove(idx, tttCurrentPlayer);
+    });
+  });
+
+  function resetTtt() {
+    tttBoard = ['', '', '', '', '', '', '', '', ''];
+    tttCurrentPlayer = 'X';
+    tttGameOver = false;
+    tttCells.forEach(c => {
+      c.textContent = '';
+      c.style.color = '#38bdf8';
+    });
+    tttStatus.textContent = "Your turn! Place X.";
+    tttDialogue.textContent = 'NEXUS: "New grid calibrated. Show me your best move!"';
+  }
+  tttResetBtn.addEventListener('click', resetTtt);
+
+  // 2. Memory Matrix Game
+  const memStatus = document.getElementById('memStatus');
+  const memDialogue = document.getElementById('memDialogue');
+  const memStartBtn = document.getElementById('memStartBtn');
+  const memPads = document.querySelectorAll('.mem-pad');
+
+  let memSequence = [];
+  let memPlayerStep = 0;
+  let memAcceptingInput = false;
+
+  function flashPad(idx) {
+    const pad = memPads[idx];
+    if (!pad) return;
+    pad.classList.add('flash');
+    playTone(400 + idx * 120, 'triangle', 0.18);
+    setTimeout(() => { pad.classList.remove('flash'); }, 300);
+  }
+
+  function startMemoryRound() {
+    memAcceptingInput = false;
+    if (memSequence.length === 0) {
+      memSequence = [Math.floor(Math.random() * 4), Math.floor(Math.random() * 4)];
     } else {
-      diagMemory.textContent = "High-Performance Mobile";
+      memSequence.push(Math.floor(Math.random() * 4));
+    }
+    memPlayerStep = 0;
+    memStatus.textContent = `Level ${memSequence.length}: Memorize the pattern!`;
+
+    // Playback sequence
+    let i = 0;
+    const timer = setInterval(() => {
+      if (i < memSequence.length) {
+        flashPad(memSequence[i]);
+        i++;
+      } else {
+        clearInterval(timer);
+        memAcceptingInput = true;
+        memStatus.textContent = "Your turn! Repeat the pattern.";
+      }
+    }, 600);
+  }
+
+  memPads.forEach(pad => {
+    pad.addEventListener('click', () => {
+      if (!memAcceptingInput) return;
+      const idx = parseInt(pad.dataset.idx, 10);
+      flashPad(idx);
+
+      if (idx === memSequence[memPlayerStep]) {
+        memPlayerStep++;
+        if (memPlayerStep === memSequence.length) {
+          memAcceptingInput = false;
+          memStatus.textContent = `🎉 Level ${memSequence.length} Cleared!`;
+          addXP(20, `Memory Level ${memSequence.length}`);
+          setTimeout(startMemoryRound, 1200);
+        }
+      } else {
+        memAcceptingInput = false;
+        memStatus.textContent = "❌ Pattern missed! Tap Start to retry.";
+        memSequence = [];
+      }
+    });
+  });
+
+  memStartBtn.addEventListener('click', startMemoryRound);
+
+  // 3. AI Brain Trivia Quiz
+  const TRIVIA = [
+    {
+      q: "Who coded the NEXUS AI Companion architecture?",
+      opts: ["Raiyan", "Anonymous", "OpenAI", "NASA"],
+      ans: 0,
+      exp: "Raiyan coded me! I am NEXUS, your personal autonomous AI companion."
+    },
+    {
+      q: "Which gas is released by green plants during photosynthesis?",
+      opts: ["Oxygen (O2)", "Carbon Dioxide", "Helium", "Methane"],
+      ans: 0,
+      exp: "Plants convert CO2 and water into glucose and Oxygen!"
+    },
+    {
+      q: "In Python, which function returns the number of items in a collection?",
+      opts: ["count()", "size()", "len()", "length()"],
+      ans: 2,
+      exp: "len() is the standard Python built-in to return length."
+    },
+    {
+      q: "What is the universal gravitational constant symbolized by?",
+      opts: ["g", "G", "C", "h"],
+      ans: 1,
+      exp: "Capital G represents the universal gravitational constant in Newton's law."
+    }
+  ];
+
+  let currentTriviaIdx = 0;
+  const triviaQuestion = document.getElementById('triviaQuestion');
+  const triviaOptions = document.getElementById('triviaOptions');
+  const triviaExplanation = document.getElementById('triviaExplanation');
+  const triviaNextBtn = document.getElementById('triviaNextBtn');
+
+  function loadTrivia(idx) {
+    currentTriviaIdx = idx % TRIVIA.length;
+    const item = TRIVIA[currentTriviaIdx];
+    triviaQuestion.textContent = `Q${currentTriviaIdx + 1}. ${item.q}`;
+    triviaExplanation.textContent = '';
+    triviaOptions.innerHTML = '';
+
+    item.opts.forEach((opt, oIdx) => {
+      const btn = document.createElement('button');
+      btn.className = 'trivia-opt-btn';
+      btn.textContent = `${String.fromCharCode(65 + oIdx)}) ${opt}`;
+      btn.addEventListener('click', () => {
+        if (btn.disabled) return;
+        triviaOptions.querySelectorAll('button').forEach(b => b.disabled = true);
+        if (oIdx === item.ans) {
+          btn.classList.add('correct');
+          triviaExplanation.textContent = `✅ Correct! ${item.exp}`;
+          addXP(20, "Trivia Correct");
+          spawnBurst('star', 16);
+        } else {
+          btn.classList.add('wrong');
+          triviaExplanation.textContent = `❌ Not quite. ${item.exp}`;
+        }
+      });
+      triviaOptions.appendChild(btn);
+    });
+  }
+
+  triviaNextBtn.addEventListener('click', () => {
+    loadTrivia(currentTriviaIdx + 1);
+  });
+  loadTrivia(0);
+
+  // --- 10. Hardware Telemetry & Diagnostics ---
+  function updateTelemetry() {
+    // Battery
+    if (navigator.getBattery) {
+      navigator.getBattery().then(bat => {
+        const lvl = Math.round(bat.level * 100);
+        diagBattery.textContent = `${lvl}% ${bat.charging ? '(Charging ⚡)' : ''}`;
+        diagBatteryBar.style.width = `${lvl}%`;
+      });
+    } else {
+      diagBattery.textContent = "100% (AC Supply)";
+      diagBatteryBar.style.width = "100%";
     }
 
-    // CPU Cores
-    if ('hardwareConcurrency' in navigator) {
-      diagCpu.textContent = `${navigator.hardwareConcurrency} Cores (Active)`;
+    // Memory
+    if (performance.memory) {
+      const mb = Math.round(performance.memory.usedJSHeapSize / (1024 * 1024));
+      diagMemory.textContent = `${mb} MB (Heap Active)`;
     } else {
-      diagCpu.textContent = "Multi-Core ARM";
+      diagMemory.textContent = "Optimal (Native)";
     }
+
+    // CPU
+    diagCpu.textContent = `${navigator.hardwareConcurrency || 8} Logical Cores`;
 
     // Network
-    if ('connection' in navigator && navigator.connection.effectiveType) {
-      diagNetwork.textContent = `${navigator.connection.effectiveType.toUpperCase()} (Online)`;
-    } else {
-      diagNetwork.textContent = navigator.onLine ? "Online (Connected)" : "Offline";
-    }
+    diagNetwork.textContent = navigator.onLine ? "Online (Active)" : "Offline (Local KB)";
 
     // Storage
     if (navigator.storage && navigator.storage.estimate) {
-      try {
-        const est = await navigator.storage.estimate();
-        const quotaMB = Math.round(est.quota / (1024 * 1024));
-        diagStorage.textContent = `~${quotaMB} MB App Storage`;
-      } catch (e) {
-        diagStorage.textContent = "Client Storage Active";
-      }
+      navigator.storage.estimate().then(est => {
+        const usedMb = Math.round((est.usage || 0) / (1024 * 1024));
+        diagStorage.textContent = `${usedMb} MB indexed`;
+      });
     } else {
-      diagStorage.textContent = "Local Cache Active";
+      diagStorage.textContent = "Persistent Store OK";
     }
+  }
+  updateTelemetry();
+  setInterval(updateTelemetry, 15000);
 
-    updateUserNameUI();
-    updateBondUI();
+  // --- 11. User Name & Identity Memory ---
+  function syncUserName() {
+    const saved = localStorage.getItem('nexus_user_name');
+    if (saved) {
+      userBadgeText.textContent = `👤 ${saved}`;
+      settingUserNameInput.value = saved;
+      userNameInput.value = saved;
+    } else {
+      userBadgeText.textContent = '👤 Set Name';
+    }
+  }
+  syncUserName();
+
+  userBadgeBtn.addEventListener('click', () => { nameModal.style.display = 'flex'; });
+  closeNameModalBtn.addEventListener('click', () => { nameModal.style.display = 'none'; });
+
+  function saveName(name) {
+    if (!name || !name.trim()) return;
+    const clean = name.trim();
+    localStorage.setItem('nexus_user_name', clean);
+    syncUserName();
+    nameModal.style.display = 'none';
+    updateBubble(`Honored to know you, ${clean}! I remember you forever.`);
+    playTone(700, 'sine', 0.15);
   }
 
-  deviceHubBtn.addEventListener('click', () => {
-    refreshDiagnostics();
-    deviceModal.style.display = 'flex';
-  });
-  closeDeviceModalBtn.addEventListener('click', () => deviceModal.style.display = 'none');
+  saveNameModalBtn.addEventListener('click', () => saveName(userNameInput.value));
+  saveUserNameBtn.addEventListener('click', () => saveName(settingUserNameInput.value));
 
-  // --- 16. User Name Memory Modal ---
-  userBadgeBtn.addEventListener('click', () => {
-    const cur = localStorage.getItem('nexus_user_name') || '';
-    userNameInput.value = cur;
-    nameModal.style.display = 'flex';
-  });
-  closeNameModalBtn.addEventListener('click', () => nameModal.style.display = 'none');
-  saveNameBtn.addEventListener('click', () => {
-    const val = userNameInput.value.trim();
-    if (val) {
-      localStorage.setItem('nexus_user_name', val);
-      updateUserNameUI();
-      nameModal.style.display = 'none';
-      updateBubble(`Name saved! I will remember you as ${val} forever.`);
-      speakAloud(`Understood. I will remember you as ${val} forever.`);
+  // --- 12. Settings Configuration ---
+  saveKeysBtn.addEventListener('click', () => {
+    if (geminiKeyInput.value.trim()) {
+      localStorage.setItem('nexus_gemini_key', geminiKeyInput.value.trim());
     }
+    if (groqKeyInput.value.trim()) {
+      localStorage.setItem('nexus_groq_key', groqKeyInput.value.trim());
+    }
+    if (openRouterKeyInput.value.trim()) {
+      localStorage.setItem('nexus_openrouter_key', openRouterKeyInput.value.trim());
+    }
+    playTone(650, 'sine', 0.15);
+    updateBubble("AI Configuration updated successfully!");
   });
 
-  // --- 17. Settings Modal ---
-  settingsBtn.addEventListener('click', () => {
-    groqKeyInput.value = localStorage.getItem('nexus_groq_key') || '';
-    geminiKeyInput.value = localStorage.getItem('nexus_gemini_key') || '';
-    openRouterKeyInput.value = localStorage.getItem('nexus_openrouter_key') || '';
-    personaSelect.value = activePersona;
-    settingsModal.style.display = 'flex';
-  });
-  closeModalBtn.addEventListener('click', () => settingsModal.style.display = 'none');
-  saveSettingsBtn.addEventListener('click', () => {
-    localStorage.setItem('nexus_groq_key', groqKeyInput.value.trim());
-    localStorage.setItem('nexus_gemini_key', geminiKeyInput.value.trim());
-    localStorage.setItem('nexus_openrouter_key', openRouterKeyInput.value.trim());
-    activePersona = personaSelect.value;
-    localStorage.setItem('nexus_mobile_persona', activePersona);
-    settingsModal.style.display = 'none';
-    updateBubble("Settings saved! Ready with enhanced intelligence.");
+  voiceToggleBtn.addEventListener('click', () => {
+    voiceEnabled = !voiceEnabled;
+    voiceStatusIcon.textContent = voiceEnabled ? '🔊' : '🔇';
+    playTone(500, 'sine', 0.08);
   });
 
-  // Close modals on overlay click
-  window.addEventListener('click', (e) => {
-    if (e.target === skinModal) skinModal.style.display = 'none';
-    if (e.target === deviceModal) deviceModal.style.display = 'none';
-    if (e.target === nameModal) nameModal.style.display = 'none';
-    if (e.target === settingsModal) settingsModal.style.display = 'none';
-  });
-
-  // --- 18. Initialize App ---
-  setSkin(activeSkinKey);
-  updateUserNameUI();
+  // Initial setup
   updateBondUI();
-
-  // Register PWA service worker
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
-  }
-
-  // Start Animation Loop
-  requestAnimationFrame(animate);
+  bubbleArchetype.textContent = `${currentSkin.icon} ${currentSkin.displayName}`;
+  skinIcon.textContent = currentSkin.icon;
+  skinLabel.textContent = currentSkin.displayName;
+  auraBadge.textContent = `✨ ${currentSkin.displayName} Aura`;
 })();

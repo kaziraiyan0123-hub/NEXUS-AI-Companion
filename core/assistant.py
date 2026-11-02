@@ -44,6 +44,7 @@ class NexusAssistant(QObject):
         self.current_worker: Optional[AIWorkerThread] = None
         self.settings_dialog: Optional[SettingsDialog] = None
         self.control_panel = None
+        self.games_window = None
         self.is_active = True
         
         # 1. Initialize Conversation Manager
@@ -78,6 +79,7 @@ class NexusAssistant(QObject):
         self.pet.tool_requested.connect(self.trigger_tool)
         self.pet.emergency_stop_requested.connect(self.trigger_emergency_stop)
         self.pet.control_panel_requested.connect(self.open_control_panel)
+        self.pet.games_requested.connect(self.open_games)
         self.pet.power_toggle_requested.connect(self.turn_off)
 
         # 7. Connect Chat Window Signals
@@ -95,6 +97,7 @@ class NexusAssistant(QObject):
         self.dock.chat_requested.connect(self.on_chat_requested)
         self.dock.vision_requested.connect(self.on_dock_vision_requested)
         self.dock.control_panel_requested.connect(self.open_control_panel)
+        self.dock.games_requested.connect(self.open_games)
         self.dock.power_toggled.connect(self.toggle_power)
 
         # 9. Proactive Companion Care Timer (Every 15 minutes)
@@ -223,6 +226,29 @@ class NexusAssistant(QObject):
         self.control_panel.show()
         self.control_panel.raise_()
         self.control_panel.activateWindow()
+
+    @Slot()
+    def open_games(self):
+        """Opens the NEXUS Arcade & Brain Games Suite."""
+        logger.info("Opening Arcade & Brain Games Suite.")
+        if self.games_window is None:
+            from desktop.games_window import GamesWindow
+            self.games_window = GamesWindow(pet_controller=self.pet)
+            self.games_window.xp_earned.connect(self._on_game_xp_earned)
+        self.games_window.show()
+        self.games_window.raise_()
+        self.games_window.activateWindow()
+
+    def _on_game_xp_earned(self, amount: int, reason: str):
+        """Awards bond XP and triggers celebrations from games."""
+        from core.memory_manager import get_memory_manager
+        mm = get_memory_manager()
+        stats = mm.add_bond_xp(amount)
+        if stats.get("leveled_up"):
+            self.pet.say(f"🎉 Level Up! We are now {stats['title']}! (+{amount} XP)", 3500)
+            self.pet.play_animation(CharacterState.CELEBRATING, duration_sec=3.5)
+        else:
+            self.pet.say(f"✨ Awesome move! +{amount} XP ({reason})", 2500)
 
     # --- Companion Presence (Enter / Exit Desktop) & Power Management ---
 

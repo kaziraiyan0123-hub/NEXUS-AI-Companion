@@ -40,12 +40,11 @@ class TestPhase7PolishAndVIP(unittest.TestCase):
         self.assertIn("allam-2-7b", prov.available_models)
 
     def test_gemini_active_models(self):
-        """Verifies Gemini provider has active 2.5 and 2.0 models."""
+        """Verifies Gemini provider has active frontier 4-argon and 3.8-flash models."""
         prov = GeminiProvider()
         self.assertEqual(prov.name, "gemini")
-        self.assertIn("gemini-2.5-flash", prov.available_models)
-        self.assertIn("gemini-2.5-pro", prov.available_models)
-        self.assertIn("gemini-2.0-flash", prov.available_models)
+        self.assertIn("gemini-4-argon", prov.available_models)
+        self.assertIn("gemini-3.8-flash", prov.available_models)
 
     def test_ai_manager_smart_routing_with_keys(self):
         """Verifies AI manager auto-selects working provider if selected has no key."""

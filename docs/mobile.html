@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
-  <title>NEXUS — AI Mobile Companion & Command Center</title>
+  <title>NEXUS — AI Companion & Mobile Command App</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#070a12">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,14 +13,23 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  
+  <!-- Mozilla PDF.js for Client-Side Multi-Page PDF Document Reading -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    if (typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
+
   <link rel="stylesheet" href="mobile.css">
 </head>
 <body>
-  <!-- Ambient background glow -->
+  <!-- Ambient background lighting -->
   <div class="glow-orb orb-top" id="orbTop"></div>
   <div class="glow-orb orb-bottom" id="orbBottom"></div>
 
-  <!-- Mobile App Header -->
+  <!-- App Main Header -->
   <header class="app-header">
     <div class="brand-group">
       <span class="logo-spark">✦</span>
@@ -30,25 +39,19 @@
       </button>
     </div>
     <div class="header-actions">
-      <button id="skinPickerBtn" class="pill-btn skin-pill" title="Switch between 8 Character Archetypes">
-        <span id="skinIcon">👑</span> <span id="skinLabel">Habibi</span>
-      </button>
-      <button id="deviceHubBtn" class="icon-btn" title="Mobile Device Command Center & Diagnostics">
-        📱
-      </button>
-      <button id="voiceToggleBtn" class="icon-btn" title="Toggle Spoken Voice">
+      <div class="bond-pill-mini" id="bondPillMini" title="Bond Level & XP">
+        <span id="miniBondText">💖 Lv.1 (0 XP)</span>
+      </div>
+      <button id="voiceToggleBtn" class="icon-btn" title="Toggle Voice Audio">
         <span id="voiceStatusIcon">🔊</span>
       </button>
-      <button id="settingsBtn" class="icon-btn" title="AI Settings & Keys">
-        ⚙️
-      </button>
-      <a href="index.html" class="icon-btn" title="Desktop Landing Page & EXE">
+      <a href="index.html" class="icon-btn" title="Desktop Page & Windows EXE">
         💻
       </a>
     </div>
   </header>
 
-  <!-- Bond Progress & Affection Bar -->
+  <!-- Level Progress Strip -->
   <div class="bond-bar-strip">
     <div class="bond-info">
       <span id="bondLevelText">💖 Level 1 • Loyal Companion</span>
@@ -59,109 +62,400 @@
     </div>
   </div>
 
-  <!-- Main Mobile Companion Viewport -->
-  <main class="companion-viewport">
+  <!-- Main Multi-View App Viewport -->
+  <main class="app-viewport">
     
-    <!-- Speech Bubble Above Pet -->
-    <div class="speech-bubble-container">
-      <div class="speech-bubble" id="speechBubble">
-        <div class="bubble-header">
-          <span class="bubble-name" id="bubbleArchetype">👑 Royal Habibi</span>
-          <div class="bubble-actions">
-            <span class="speech-wave" id="speechWave" style="display:none;">
-              <span></span><span></span><span></span>
-            </span>
-            <button id="repeatSpeechBtn" class="bubble-btn" title="Listen again">🔊</button>
+    <!-- ========================================================
+         VIEW 1: 🐾 Interactive Pet Stage
+         ======================================================== -->
+    <section class="tab-view active" id="viewPet">
+      <!-- Speech Bubble -->
+      <div class="speech-bubble-container">
+        <div class="speech-bubble" id="speechBubble">
+          <div class="bubble-header">
+            <span class="bubble-name" id="bubbleArchetype">👑 Royal Habibi</span>
+            <div class="bubble-actions">
+              <span class="speech-wave" id="speechWave" style="display:none;">
+                <span></span><span></span><span></span>
+              </span>
+              <button id="repeatSpeechBtn" class="bubble-btn" title="Listen again">🔊</button>
+            </div>
           </div>
-        </div>
-        <div class="bubble-content" id="bubbleText">
-          Hello! I'm NEXUS, your personal AI companion. Pet me, tap high-five, or ask me anything!
-        </div>
-      </div>
-    </div>
-
-    <!-- Living Animated Vector Pet Canvas -->
-    <div class="pet-stage" id="petStage">
-      <canvas id="mobilePetCanvas" width="360" height="280"></canvas>
-      <div class="touch-hint" id="touchHint">👆 Tap or drag to pet NEXUS</div>
-    </div>
-
-    <!-- Affection & Quick Interaction Action Bar -->
-    <div class="action-bar">
-      <button class="action-btn" id="petBtn">
-        <span class="btn-icon">💖</span> Pet (+5 XP)
-      </button>
-      <button class="action-btn" id="highFiveBtn">
-        <span class="btn-icon">✋</span> High-Five (+10 XP)
-      </button>
-      <button class="action-btn" id="cheerBtn">
-        <span class="btn-icon">⭐</span> Cheer (+5 XP)
-      </button>
-      <button class="action-btn" id="karakBtn">
-        <span class="btn-icon">☕</span> Karak Chai
-      </button>
-      <button class="action-btn" id="timeBtn">
-        <span class="btn-icon">🕒</span> Time
-      </button>
-    </div>
-
-    <!-- Chat Stream Drawer -->
-    <div class="chat-drawer" id="chatDrawer">
-      <div class="chat-header">
-        <div class="chat-title-group">
-          <span class="chat-title">💬 Live AI Conversation</span>
-          <span class="memory-indicator" id="memoryIndicator" title="Multi-turn memory active">● Memory Active</span>
-        </div>
-        <div class="chat-header-actions">
-          <button id="expandChatBtn" class="clear-btn" title="Toggle Expanded Chat View">↕️ Expand</button>
-          <button id="clearChatBtn" class="clear-btn" title="Clear Chat History">Clear</button>
-        </div>
-      </div>
-      <div class="chat-messages" id="chatMessages">
-        <div class="chat-msg assistant">
-          <div class="msg-bubble">
-            <strong>✦ NEXUS:</strong> Raiyan coded me! I am fully functional with multi-turn memory on mobile. Type your question below, attach documents (PDF/code), tap the mic to speak, or snap photos with your camera!
+          <div class="bubble-content" id="bubbleText">
+            Hello! Raiyan coded me! I am NEXUS, your personal autonomous AI companion. Tap to pet me, play games, or chat!
           </div>
         </div>
       </div>
-    </div>
+
+      <!-- Living Pet Canvas -->
+      <div class="pet-stage" id="petStage">
+        <canvas id="mobilePetCanvas" width="360" height="280"></canvas>
+        <div class="touch-hint" id="touchHint">👆 Tap or drag to pet NEXUS (+5 XP)</div>
+      </div>
+
+      <!-- Archetype Switcher & Aura Indicator -->
+      <div class="skin-selector-bar">
+        <button id="skinPickerBtn" class="pill-btn skin-pill" title="Switch between 8 Character Archetypes">
+          <span id="skinIcon">👑</span> <span id="skinLabel">Royal Habibi</span>
+        </button>
+        <span class="aura-badge" id="auraBadge">✨ Cyber Aura</span>
+      </div>
+
+      <!-- Affection Actions -->
+      <div class="action-bar">
+        <button class="action-btn" id="petBtn">
+          <span class="btn-icon">💖</span> Pet (+5 XP)
+        </button>
+        <button class="action-btn" id="highFiveBtn">
+          <span class="btn-icon">✋</span> High-Five (+10 XP)
+        </button>
+        <button class="action-btn" id="cheerBtn">
+          <span class="btn-icon">⭐</span> Cheer (+5 XP)
+        </button>
+        <button class="action-btn" id="karakBtn">
+          <span class="btn-icon">☕</span> Karak Chai (+15 XP)
+        </button>
+        <button class="action-btn" id="danceBtn">
+          <span class="btn-icon">💃</span> Dance (+10 XP)
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         VIEW 2: 💬 Dedicated Modern AI Chat
+         ======================================================== -->
+    <section class="tab-view" id="viewChat">
+      <div class="chat-view-container">
+        <!-- Chat View Header -->
+        <div class="chat-hud-header">
+          <div class="chat-hud-left">
+            <span class="active-dot">●</span>
+            <span class="chat-model-label" id="chatActiveModel">✦ Gemini 4 Argon & Groq</span>
+          </div>
+          <div class="chat-hud-right">
+            <select id="chatPersonaSelect" class="hud-select" title="Switch AI Persona">
+              <option value="companion">✦ Companion</option>
+              <option value="academic">🎓 Academic</option>
+              <option value="architect">💻 Architect</option>
+              <option value="executive">📝 Executive</option>
+              <option value="security">🛡️ Security</option>
+            </select>
+            <button id="clearChatBtn" class="hud-btn" title="Clear Conversation">Clear</button>
+          </div>
+        </div>
+
+        <!-- Chat Messages Stream -->
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-msg assistant">
+            <div class="msg-bubble">
+              <strong>✦ NEXUS:</strong> Raiyan coded me! I am your personal autonomous AI companion. I can answer complex questions, inspect PDF documents and code files, analyze photos, and play brain games with you!
+            </div>
+          </div>
+        </div>
+
+        <!-- Attachment Preview Pill -->
+        <div class="attachment-strip" id="attachmentStrip" style="display:none;">
+          <div class="attachment-pill">
+            <div id="attachmentThumbWrap" style="display:none;">
+              <img id="attachmentThumb" src="" alt="Thumbnail" class="attachment-img-preview">
+            </div>
+            <span class="att-icon" id="attIcon">📄</span>
+            <div class="att-text-group">
+              <span class="att-name" id="attachmentName">document.pdf</span>
+              <span class="att-size" id="attachmentSize">12 KB</span>
+            </div>
+            <button id="removeAttachmentBtn" class="att-remove" title="Remove attachment">✕</button>
+          </div>
+        </div>
+
+        <!-- Chat Input Bar -->
+        <div class="chat-input-bar">
+          <label for="docUpload" class="tool-btn" title="Attach Document, Multi-page PDF, or Code">
+            📎
+          </label>
+          <input type="file" id="docUpload" accept=".pdf,.txt,.py,.js,.ts,.json,.csv,.md,.html,.css,.sql,.java,.cpp,.c" style="display:none;">
+
+          <label for="cameraUpload" class="tool-btn" title="Capture Camera Photo for Multimodal Vision">
+            📷
+          </label>
+          <input type="file" id="cameraUpload" accept="image/*" capture="environment" style="display:none;">
+
+          <input type="text" id="chatInput" placeholder="Ask NEXUS anything..." autocomplete="off">
+
+          <button id="micBtn" class="tool-btn mic-btn" title="Speech to Text">
+            🎙️
+          </button>
+          <button id="sendBtn" class="send-btn" title="Send Query">
+            ➤
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         VIEW 3: 🎮 Arcade & Brain Games Lab
+         ======================================================== -->
+    <section class="tab-view" id="viewGames">
+      <div class="games-view-container">
+        
+        <!-- Game Subtabs -->
+        <div class="game-tabs-bar">
+          <button class="game-tab-btn active" id="gameTabTtt">❌ Tic-Tac-Toe</button>
+          <button class="game-tab-btn" id="gameTabMem">🧠 Memory Matrix</button>
+          <button class="game-tab-btn" id="gameTabTrivia">⚡ Brain Trivia</button>
+        </div>
+
+        <!-- Bot Autonomous Self-Play Toggle Pill -->
+        <div class="self-play-banner">
+          <div class="self-play-info">
+            <span class="self-play-title">🤖 Autonomous Bot Self-Play</span>
+            <span class="self-play-sub">Bot plays games by itself & earns idle XP!</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="botSelfPlayToggle">
+            <span class="slider round"></span>
+          </label>
+        </div>
+
+        <!-- Game 1: Tic-Tac-Toe -->
+        <div class="game-card" id="gameTttSection">
+          <div class="game-card-header">
+            <span class="game-status" id="tttStatus">Your turn! Place X.</span>
+            <button class="game-action-btn" id="tttResetBtn">🔄 Reset</button>
+          </div>
+          <div class="ttt-grid" id="tttGrid">
+            <!-- 9 Tic Tac Toe cells -->
+            <button class="ttt-cell" data-idx="0"></button>
+            <button class="ttt-cell" data-idx="1"></button>
+            <button class="ttt-cell" data-idx="2"></button>
+            <button class="ttt-cell" data-idx="3"></button>
+            <button class="ttt-cell" data-idx="4"></button>
+            <button class="ttt-cell" data-idx="5"></button>
+            <button class="ttt-cell" data-idx="6"></button>
+            <button class="ttt-cell" data-idx="7"></button>
+            <button class="ttt-cell" data-idx="8"></button>
+          </div>
+          <div class="game-dialogue" id="tttDialogue">
+            NEXUS: "Let's see if your strategy can bypass my neural heuristics!"
+          </div>
+        </div>
+
+        <!-- Game 2: Memory Matrix -->
+        <div class="game-card" id="gameMemSection" style="display:none;">
+          <div class="game-card-header">
+            <span class="game-status" id="memStatus">Watch the glowing sequence!</span>
+            <button class="game-action-btn" id="memStartBtn">▶️ Start Round</button>
+          </div>
+          <div class="mem-grid" id="memGrid">
+            <button class="mem-pad pad-cyan" data-idx="0">Cyan Pulse</button>
+            <button class="mem-pad pad-amber" data-idx="1">Amber Flare</button>
+            <button class="mem-pad pad-emerald" data-idx="2">Emerald Matrix</button>
+            <button class="mem-pad pad-purple" data-idx="3">Purple Void</button>
+          </div>
+          <div class="game-dialogue" id="memDialogue">
+            NEXUS: "Memory Matrix trains cognitive sequence retention!"
+          </div>
+        </div>
+
+        <!-- Game 3: AI Brain Trivia Quiz -->
+        <div class="game-card" id="gameTriviaSection" style="display:none;">
+          <div class="game-card-header">
+            <span class="game-status" id="triviaStatus">Answer correctly to earn +20 XP!</span>
+            <button class="game-action-btn" id="triviaNextBtn">⏭️ Next</button>
+          </div>
+          <div class="trivia-box">
+            <div class="trivia-question" id="triviaQuestion">Question Loading...</div>
+            <div class="trivia-options" id="triviaOptions">
+              <!-- 4 trivia option buttons -->
+            </div>
+            <div class="trivia-explanation" id="triviaExplanation"></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================================
+         VIEW 4: 🏆 EXP & Progression Unlocks
+         ======================================================== -->
+    <section class="tab-view" id="viewUnlocks">
+      <div class="unlocks-view-container">
+        
+        <!-- Big Level Overview Card -->
+        <div class="exp-hero-card">
+          <div class="exp-hero-rank" id="heroRankTitle">👑 Level 1: Novice Companion</div>
+          <div class="exp-hero-counter" id="heroXpText">0 / 25 Total XP</div>
+          <div class="exp-hero-track">
+            <div class="exp-hero-fill" id="heroXpFill" style="width: 0%;"></div>
+          </div>
+          <p class="exp-hero-desc">
+            Earn XP by petting, playing games, answering trivia, and chatting. Level up to unlock new archetypes, games, and abilities!
+          </p>
+        </div>
+
+        <!-- Progression Roadmap -->
+        <h3 class="section-title">🎖️ Companion Progression Roadmap</h3>
+        
+        <div class="unlock-item unlocked" id="unlockLvl1">
+          <div class="unlock-icon">🐾</div>
+          <div class="unlock-details">
+            <div class="unlock-title">Level 1 • Core Companion (0 XP)</div>
+            <div class="unlock-desc">Interactive Living Vector Pet, Live Chat & Touch Affection</div>
+          </div>
+          <span class="unlock-tag">UNLOCKED</span>
+        </div>
+
+        <div class="unlock-item" id="unlockLvl2">
+          <div class="unlock-icon">❌</div>
+          <div class="unlock-details">
+            <div class="unlock-title">Level 2 • Arcade Master (25 XP)</div>
+            <div class="unlock-desc">Unlocks Tic-Tac-Toe Arcade Game & Neon Cyan Aura Glow</div>
+          </div>
+          <span class="unlock-tag locked" id="tagLvl2">LOCKED (25 XP)</span>
+        </div>
+
+        <div class="unlock-item" id="unlockLvl3">
+          <div class="unlock-icon">🧠</div>
+          <div class="unlock-details">
+            <div class="unlock-title">Level 3 • Cyber Sage (60 XP)</div>
+            <div class="unlock-desc">Unlocks Memory Matrix Brain Game & Quantum Fox Archetype</div>
+          </div>
+          <span class="unlock-tag locked" id="tagLvl3">LOCKED (60 XP)</span>
+        </div>
+
+        <div class="unlock-item" id="unlockLvl4">
+          <div class="unlock-icon">☕</div>
+          <div class="unlock-details">
+            <div class="unlock-title">Level 4 • Karak Monarch (120 XP)</div>
+            <div class="unlock-desc">Unlocks AI Trivia Quiz Challenge & Golden Royal Habibi Aura</div>
+          </div>
+          <span class="unlock-tag locked" id="tagLvl4">LOCKED (120 XP)</span>
+        </div>
+
+        <div class="unlock-item" id="unlockLvl5">
+          <div class="unlock-icon">🤖</div>
+          <div class="unlock-details">
+            <div class="unlock-title">Level 5 • Omnipresent Deity (200 XP)</div>
+            <div class="unlock-desc">Unlocks Autonomous Bot Self-Play Idle Mode & Obsidian Void Skin</div>
+          </div>
+          <span class="unlock-tag locked" id="tagLvl5">LOCKED (200 XP)</span>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================================
+         VIEW 5: 📱 System, Diagnostics & Settings
+         ======================================================== -->
+    <section class="tab-view" id="viewSettings">
+      <div class="settings-view-container">
+
+        <!-- Mobile Diagnostics Card -->
+        <div class="settings-group-card">
+          <h3 class="group-title">📱 Mobile Device Telemetry</h3>
+          
+          <div class="telemetry-row">
+            <span>🔋 Battery Level:</span>
+            <span class="telemetry-val" id="diagBattery">Detecting...</span>
+          </div>
+          <div class="meter-bar"><div class="meter-fill" id="diagBatteryBar" style="width: 50%;"></div></div>
+
+          <div class="telemetry-row" style="margin-top: 10px;">
+            <span>🧠 RAM Memory:</span>
+            <span class="telemetry-val" id="diagMemory">Detecting...</span>
+          </div>
+
+          <div class="telemetry-row">
+            <span>⚡ CPU Cores:</span>
+            <span class="telemetry-val" id="diagCpu">Detecting...</span>
+          </div>
+
+          <div class="telemetry-row">
+            <span>📶 Network Connection:</span>
+            <span class="telemetry-val" id="diagNetwork">Online (Active)</span>
+          </div>
+
+          <div class="telemetry-row">
+            <span>💾 Device Storage:</span>
+            <span class="telemetry-val" id="diagStorage">Detecting...</span>
+          </div>
+        </div>
+
+        <!-- Frontier AI Engine Config -->
+        <div class="settings-group-card">
+          <h3 class="group-title">⚡ AI Frontier Engine</h3>
+          <p class="settings-subtext">
+            NEXUS comes pre-configured with Google Gemini (4 Argon & 3.8 Flash), Groq LPU (Qwen 3.8), and offline intelligence.
+          </p>
+
+          <label class="settings-label">Active Provider:</label>
+          <select id="settingProviderSelect" class="settings-input">
+            <option value="gemini">Google Gemini (Gemini 4 Argon & 3.8 Flash)</option>
+            <option value="groq">Groq Cloud (Qwen 3.8 27B & GPT-OSS 120B)</option>
+            <option value="openrouter">OpenRouter Free Community Tier</option>
+          </select>
+
+          <label class="settings-label">Custom Gemini Key (Optional):</label>
+          <input type="password" id="geminiKeyInput" class="settings-input" placeholder="Preloaded built-in key active">
+
+          <label class="settings-label">Custom Groq Key (Optional):</label>
+          <input type="password" id="groqKeyInput" class="settings-input" placeholder="Preloaded built-in key active">
+
+          <label class="settings-label">Custom OpenRouter Key (Optional):</label>
+          <input type="password" id="openRouterKeyInput" class="settings-input" placeholder="sk-or-... (Optional)">
+
+          <button id="saveKeysBtn" class="btn-primary-mobile">Save AI Configuration</button>
+        </div>
+
+        <!-- User Identity Memory -->
+        <div class="settings-group-card">
+          <h3 class="group-title">🧠 Permanent Companion Memory</h3>
+          <label class="settings-label">Your Name (NEXUS remembers forever):</label>
+          <input type="text" id="settingUserNameInput" class="settings-input" placeholder="Enter your name (e.g. Raiyan)">
+          <button id="saveUserNameBtn" class="btn-primary-mobile">Update Name Memory</button>
+        </div>
+
+        <!-- Creator Attribution Card -->
+        <div class="attribution-card">
+          <div class="att-title">👨‍💻 Creator Attribution</div>
+          <div class="att-highlight">"Raiyan coded me!"</div>
+          <p class="att-desc">
+            NEXUS is an autonomous AI companion designed and engineered by Raiyan for Windows desktop and mobile devices.
+          </p>
+        </div>
+
+      </div>
+    </section>
+
   </main>
 
-  <!-- Attachment Preview Strip -->
-  <div class="attachment-strip" id="attachmentStrip" style="display:none;">
-    <div class="attachment-pill">
-      <span class="att-icon">📎</span>
-      <span class="att-name" id="attachmentName">document.pdf</span>
-      <span class="att-size" id="attachmentSize">12 KB</span>
-      <button id="removeAttachmentBtn" class="att-remove">✕</button>
-    </div>
-  </div>
+  <!-- ========================================================
+       Fixed Bottom Navigation Tab Bar (True Native App Feel)
+       ======================================================== -->
+  <nav class="bottom-nav-bar">
+    <button class="nav-item active" id="navPet" data-view="viewPet">
+      <span class="nav-icon">🐾</span>
+      <span class="nav-label">Pet</span>
+    </button>
+    <button class="nav-item" id="navChat" data-view="viewChat">
+      <span class="nav-icon">💬</span>
+      <span class="nav-label">Chat</span>
+    </button>
+    <button class="nav-item" id="navGames" data-view="viewGames">
+      <span class="nav-icon">🎮</span>
+      <span class="nav-label">Arcade</span>
+    </button>
+    <button class="nav-item" id="navUnlocks" data-view="viewUnlocks">
+      <span class="nav-icon">🏆</span>
+      <span class="nav-label">Unlocks</span>
+    </button>
+    <button class="nav-item" id="navSettings" data-view="viewSettings">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Settings</span>
+    </button>
+  </nav>
 
-  <!-- Bottom Interactive Input Bar -->
-  <footer class="app-input-bar">
-    <div class="input-container">
-      <label for="docUpload" class="tool-btn" title="Attach Document, Code, or PDF">
-        📎
-      </label>
-      <input type="file" id="docUpload" accept=".pdf,.txt,.py,.js,.json,.csv,.md,.html" style="display:none;">
-
-      <label for="cameraUpload" class="tool-btn" title="Take a Photo with Camera">
-        📷
-      </label>
-      <input type="file" id="cameraUpload" accept="image/*" capture="environment" style="display:none;">
-
-      <input type="text" id="chatInput" placeholder="Message NEXUS..." autocomplete="off">
-
-      <button id="micBtn" class="tool-btn mic-btn" title="Speak into Microphone">
-        🎙️
-      </button>
-      <button id="sendBtn" class="send-btn" title="Send Message">
-        ➤
-      </button>
-    </div>
-  </footer>
-
-  <!-- 1. Archetype Skin Switcher Modal (All 8 Models) -->
+  <!-- Skin Picker Modal (All 8 Archetypes) -->
   <div class="modal-overlay" id="skinModal" style="display:none;">
     <div class="modal-card">
       <div class="modal-header">
@@ -170,7 +464,7 @@
       </div>
       <div class="modal-body">
         <p class="modal-desc">
-          Choose from 8 distinct vector character models inspired by the desktop companion:
+          Choose from 8 unique vector character models with custom animations and particles:
         </p>
         <div class="skin-grid" id="skinGrid">
           <!-- Dynamically populated 8 skins -->
@@ -179,116 +473,19 @@
     </div>
   </div>
 
-  <!-- 2. Device Command Center & Diagnostics Modal -->
-  <div class="modal-overlay" id="deviceModal" style="display:none;">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3>📱 Mobile Command Center</h3>
-        <button id="closeDeviceModalBtn" class="close-modal-btn">✕</button>
-      </div>
-      <div class="modal-body">
-        <p class="modal-desc">Real-time mobile hardware diagnostics and local companion stats:</p>
-        
-        <div class="diag-card">
-          <div class="diag-row">
-            <span class="diag-lbl">🔋 Battery Status:</span>
-            <span class="diag-val" id="diagBattery">Detecting...</span>
-          </div>
-          <div class="meter-bar"><div class="meter-fill" id="diagBatteryBar" style="width: 50%;"></div></div>
-
-          <div class="diag-row" style="margin-top: 10px;">
-            <span class="diag-lbl">🧠 RAM Memory:</span>
-            <span class="diag-val" id="diagMemory">Detecting...</span>
-          </div>
-
-          <div class="diag-row">
-            <span class="diag-lbl">⚡ CPU Processor:</span>
-            <span class="diag-val" id="diagCpu">Detecting...</span>
-          </div>
-
-          <div class="diag-row">
-            <span class="diag-lbl">📶 Network Link:</span>
-            <span class="diag-val" id="diagNetwork">Online (Active)</span>
-          </div>
-
-          <div class="diag-row">
-            <span class="diag-lbl">💾 Storage Estimate:</span>
-            <span class="diag-val" id="diagStorage">Detecting...</span>
-          </div>
-        </div>
-
-        <div class="diag-card" style="margin-top: 10px;">
-          <h4 style="font-size: 13px; color: #38bdf8; margin-bottom: 6px;">🧠 Companion Permanent Memory</h4>
-          <div class="diag-row">
-            <span class="diag-lbl">👤 User Name:</span>
-            <span class="diag-val" id="diagUserName">Not set</span>
-          </div>
-          <div class="diag-row">
-            <span class="diag-lbl">💖 Bond Level:</span>
-            <span class="diag-val" id="diagBondLevel">Level 1 (0 XP)</span>
-          </div>
-          <div class="diag-row">
-            <span class="diag-lbl">👨‍💻 Creator Attribution:</span>
-            <span class="diag-val" style="color: #34d399;">Raiyan coded me!</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 3. User Name Memory Modal -->
+  <!-- User Name Modal -->
   <div class="modal-overlay" id="nameModal" style="display:none;">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>👤 Permanent Name Memory</h3>
+        <h3>👤 Set Permanent Name</h3>
         <button id="closeNameModalBtn" class="close-modal-btn">✕</button>
       </div>
       <div class="modal-body">
         <p class="modal-desc">
-          Tell NEXUS your name so your companion remembers you across every conversation forever:
+          Tell NEXUS your name so your companion remembers you across every conversation:
         </p>
-        <label class="input-label">Your Name:</label>
-        <input type="text" id="userNameInput" class="modal-input" placeholder="e.g. Raiyan" maxlength="30">
-        <div class="modal-actions">
-          <button id="saveNameBtn" class="btn btn-primary" style="width:100%;">Remember My Name Forever</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 4. Settings Modal (API Keys & Persona) -->
-  <div class="modal-overlay" id="settingsModal" style="display:none;">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3>⚙️ NEXUS Settings</h3>
-        <button id="closeModalBtn" class="close-modal-btn">✕</button>
-      </div>
-      <div class="modal-body">
-        <p class="modal-desc">
-          NEXUS comes pre-configured with Groq Frontier AI and offline knowledge. You can also connect your own custom keys:
-        </p>
-        
-        <label class="input-label">Groq Cloud API Key (Free High-Speed LPU):</label>
-        <input type="password" id="groqKeyInput" class="modal-input" placeholder="gsk_... (Leave blank to use built-in)">
-
-        <label class="input-label">Google Gemini API Key (Free):</label>
-        <input type="password" id="geminiKeyInput" class="modal-input" placeholder="AIzaSy... (Optional)">
-
-        <label class="input-label">OpenRouter API Key (Free Tier):</label>
-        <input type="password" id="openRouterKeyInput" class="modal-input" placeholder="sk-or-... (Optional)">
-
-        <label class="input-label">Companion Persona:</label>
-        <select id="personaSelect" class="modal-select">
-          <option value="companion">✦ Natural Companion (Witty, Friendly & Helpful)</option>
-          <option value="academic">🎓 University Professor (Detailed Explanations)</option>
-          <option value="architect">💻 Senior Software Architect (Clean Code & Debugging)</option>
-          <option value="executive">📝 Executive Briefing (Concise & Polished)</option>
-          <option value="security">🛡️ Security Analyst (Vulnerabilities & Hardening)</option>
-        </select>
-
-        <div class="modal-actions">
-          <button id="saveSettingsBtn" class="btn btn-primary" style="width:100%;">Save Settings</button>
-        </div>
+        <input type="text" id="userNameInput" class="settings-input" placeholder="e.g. Raiyan" maxlength="30">
+        <button id="saveNameModalBtn" class="btn-primary-mobile" style="margin-top: 10px;">Save Name</button>
       </div>
     </div>
   </div>

@@ -38,6 +38,9 @@ class PetContextMenu(QMenu):
         action_cp = self.addAction("💻  Command Center")
         action_cp.triggered.connect(self.controller.open_control_panel)
 
+        action_games = self.addAction("🎮  Arcade & Brain Games")
+        action_games.triggered.connect(self.controller.open_games)
+
         self.addSeparator()
 
         # Affection & Interactions
