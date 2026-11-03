@@ -138,5 +138,40 @@ class TestDocumentProcessor(unittest.TestCase):
         self.assertIn("Slide bullet point details", text)
         self.assertEqual(meta["slide_count"], 1)
 
+    def test_10_binary_probe_protection(self):
+        """Verify binary file with null bytes is recognized safely without unicode corruption."""
+        bin_path = os.path.join(self.temp_dir.name, "binary_blob.bin")
+        with open(bin_path, "wb") as f:
+            f.write(b"NEXUS_HEADER\x00\x01\x02\x03BINARY_PAYLOAD_DATA\x00\xff")
+
+        success, text, meta = DocumentProcessor.extract_file_content(bin_path)
+        self.assertTrue(success)
+        self.assertEqual(meta["file_type"], "Binary File")
+        self.assertIn("Binary File Attached", text)
+
+    def test_11_image_multimodal_vision_extraction(self):
+        """Verify image files are recognized as Vision documents without text crash."""
+        img_path = os.path.join(self.temp_dir.name, "snapshot.png")
+        # Write minimal 1x1 valid PNG
+        from PIL import Image
+        img = Image.new("RGB", (100, 100), color="blue")
+        img.save(img_path)
+
+        success, text, meta = DocumentProcessor.extract_file_content(img_path)
+        self.assertTrue(success)
+        self.assertEqual(meta["file_type"], "Image (Vision)")
+        self.assertIn("dimensions 100x100", text)
+
+    def test_12_fallback_provider_safe_document_notice(self):
+        """Verify fallback provider does not echo raw multi-kilobyte documents into markdown."""
+        from core.providers.fallback_provider import FallbackProvider
+        prov = FallbackProvider()
+        huge_doc_prompt = "Summarize this:\n[ATTACHED DOCUMENTS PROVIDED FOR YOU TO READ AND ANALYZE]:\n" + ("Sensitive Data Content " * 500)
+        res = prov.generate_response([{"role": "user", "content": huge_doc_prompt}])
+        # Must not contain the 500 repetitions of raw content
+        self.assertNotIn("Sensitive Data Content " * 50, res)
+        self.assertIn("Document Analysis", res)
+        self.assertIn("Groq", res)
+
 if __name__ == "__main__":
     unittest.main()

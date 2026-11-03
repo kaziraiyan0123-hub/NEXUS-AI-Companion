@@ -305,12 +305,25 @@
 
         <!-- Game 3: AI Brain Trivia Quiz -->
         <div class="game-card" id="gameTriviaSection" style="display:none;">
-          <div class="game-card-header">
-            <div class="trivia-header-group">
+          <div class="game-card-header" style="flex-direction:column; align-items:stretch; gap:8px;">
+            <div class="trivia-header-group" style="display:flex; justify-content:space-between; align-items:center;">
               <span class="game-status" id="triviaStatus">Answer correctly to earn +20 XP!</span>
               <span class="streak-badge" id="triviaStreak">🔥 Streak: 0</span>
             </div>
-            <button class="game-action-btn" id="triviaNextBtn">⏭️ Next</button>
+            <div class="trivia-ctrl-row" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+              <select id="triviaCategorySelect" class="trivia-select" style="background:#1e293b; color:#38bdf8; border:1px solid #334155; border-radius:6px; padding:4px 8px; font-size:12px; outline:none;">
+                <option value="all">All Topics (Shuffle)</option>
+                <option value="Science & Nature">Science & Nature</option>
+                <option value="Space & Universe">Space & Universe</option>
+                <option value="Computer Science & AI">Computer Science & AI</option>
+                <option value="World History">World History</option>
+                <option value="World Geography">World Geography</option>
+                <option value="Mathematics & Logic">Math & Logic</option>
+                <option value="Pop Culture & Gaming">Pop Culture & Gaming</option>
+              </select>
+              <button class="game-action-btn" id="triviaAiGenBtn" style="background:linear-gradient(135deg, #0284c7, #38bdf8); color:#0b0f19; font-weight:bold; font-size:11px;">✨ AI Question</button>
+              <button class="game-action-btn" id="triviaNextBtn" style="font-size:11px;">⏭️ Next</button>
+            </div>
           </div>
           <div class="trivia-box">
             <div class="trivia-category-pill" id="triviaCategory">Science & Space</div>

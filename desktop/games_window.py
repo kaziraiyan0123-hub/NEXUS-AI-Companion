@@ -11,11 +11,11 @@ import random
 import logging
 from typing import List, Optional
 
-from PySide6.QtCore import Qt, QPoint, QTimer, Signal
+from PySide6.QtCore import Qt, QPoint, QTimer, Signal, QThread
 from PySide6.QtGui import QFont, QCursor, QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QGridLayout, QTabWidget, QFrame, QProgressBar, QMessageBox
+    QGridLayout, QTabWidget, QFrame, QProgressBar, QMessageBox, QComboBox
 )
 
 from config.settings import get_settings
@@ -569,59 +569,214 @@ class GamesWindow(QWidget):
         click_step(0)
 
     # -------------------------------------------------------------
-    # 3. AI Brain Trivia Quiz
+    # 3. AI Brain Trivia Quiz & Dynamic Frontier Generation
     # -------------------------------------------------------------
     TRIVIA_QUESTIONS = [
+        # Science & Biology
         {
+            "topic": "Science & Nature",
             "q": "Which gas is released by green plants during photosynthesis?",
             "options": ["Oxygen (O2)", "Carbon Dioxide (CO2)", "Methane (CH4)", "Helium (He)"],
             "correct": 0,
-            "explanation": "Plants take in CO2 and release Oxygen as a byproduct of the light reactions!"
+            "explanation": "Plants take in CO2 and water, releasing Oxygen as a byproduct of light reactions."
         },
         {
-            "q": "In Python, which built-in function returns the number of items in an object?",
-            "options": ["count()", "size()", "len()", "length()"],
+            "topic": "Science & Nature",
+            "q": "What is the powerhouse organelle of eukaryotic cells responsible for producing ATP?",
+            "options": ["Ribosome", "Mitochondria", "Endoplasmic Reticulum", "Golgi Apparatus"],
+            "correct": 1,
+            "explanation": "Mitochondria generate most of the chemical energy needed to power biochemical reactions via ATP."
+        },
+        {
+            "topic": "Science & Nature",
+            "q": "What is the chemical symbol and atomic number of Gold?",
+            "options": ["Ag (47)", "Fe (26)", "Au (79)", "Pt (78)"],
             "correct": 2,
-            "explanation": "len() returns the length (the number of items) of an object."
+            "explanation": "Gold has symbol Au (from Latin 'aurum') and atomic number 79."
         },
+        # Space & Cosmos
         {
+            "topic": "Space & Universe",
             "q": "What is the universal gravitational constant symbolized by in Newton's gravity law?",
             "options": ["g", "G", "C", "h"],
             "correct": 1,
             "explanation": "Big 'G' represents the universal gravitational constant (approx 6.674×10^-11 m³/kg/s²)."
         },
         {
-            "q": "Who coded the NEXUS AI Companion architecture?",
-            "options": ["Raiyan", "Anonymous Corporation", "OpenAI", "NASA"],
+            "topic": "Space & Universe",
+            "q": "Which planet in our solar system has the shortest orbital period around the Sun?",
+            "options": ["Mercury (88 days)", "Venus (225 days)", "Mars (687 days)", "Jupiter (12 years)"],
+            "correct": 0,
+            "explanation": "Mercury is closest to the Sun and completes one revolution in only 88 Earth days."
+        },
+        {
+            "topic": "Space & Universe",
+            "q": "What is the boundary surrounding a black hole beyond which nothing, not even light, can escape?",
+            "options": ["Photon Sphere", "Ergosphere", "Event Horizon", "Accretion Disk"],
+            "correct": 2,
+            "explanation": "The event horizon marks the point of no return where escape velocity exceeds light speed."
+        },
+        # Computer Science & AI
+        {
+            "topic": "Computer Science & AI",
+            "q": "Who coded and engineered the NEXUS AI Companion architecture?",
+            "options": ["Raiyan", "Anonymous Corp", "OpenAI", "NASA"],
             "correct": 0,
             "explanation": "Raiyan coded me! I am NEXUS, your personal autonomous AI companion."
         },
         {
-            "q": "What is the fastest sorting algorithm on average for general purpose arrays?",
-            "options": ["Bubble Sort", "Quick Sort / Timsort", "Selection Sort", "Bogo Sort"],
+            "topic": "Computer Science & AI",
+            "q": "In Python, which built-in function returns the number of items in a collection?",
+            "options": ["count()", "size()", "len()", "length()"],
+            "correct": 2,
+            "explanation": "len() returns the total length or item count of sequences and collections in O(1) time."
+        },
+        {
+            "topic": "Computer Science & AI",
+            "q": "What is the average time complexity of QuickSort on randomized inputs?",
+            "options": ["O(n)", "O(n log n)", "O(n²)", "O(log n)"],
             "correct": 1,
-            "explanation": "Quick Sort and Timsort operate at O(n log n) average time complexity."
+            "explanation": "QuickSort and MergeSort run in O(n log n) average time."
+        },
+        {
+            "topic": "Computer Science & AI",
+            "q": "In neural networks, what does the 'Transformer' architecture primarily rely on to model dependencies?",
+            "options": ["Recurrent LSTMs", "Self-Attention Mechanism", "Genetic Algorithms", "Markov Decision Chains"],
+            "correct": 1,
+            "explanation": "Introduced in 'Attention Is All You Need' (2017), self-attention enables parallelized contextual understanding."
+        },
+        # World History
+        {
+            "topic": "World History",
+            "q": "In which ancient civilization was the Great Pyramid of Giza constructed?",
+            "options": ["Mesopotamia", "Ancient Egypt", "Ancient Greece", "Indus Valley"],
+            "correct": 1,
+            "explanation": "Built during Egypt's Fourth Dynasty for Pharaoh Khufu circa 2560 BCE."
+        },
+        {
+            "topic": "World History",
+            "q": "Which historical invention by Johannes Gutenberg revolutionized the spread of literacy in 1440?",
+            "options": ["The Steam Engine", "Movable Type Printing Press", "The Astrolabe", "The Mechanical Loom"],
+            "correct": 1,
+            "explanation": "Gutenberg's movable type press democratized book publication across Renaissance Europe."
+        },
+        # World Geography
+        {
+            "topic": "World Geography",
+            "q": "What is the deepest known oceanic trench on planet Earth?",
+            "options": ["Java Trench", "Puerto Rico Trench", "Mariana Trench (Challenger Deep)", "Tonga Trench"],
+            "correct": 2,
+            "explanation": "The Challenger Deep in the Mariana Trench reaches approximately 10,994 meters (36,070 feet) below sea level."
+        },
+        {
+            "topic": "World Geography",
+            "q": "Which is the longest river in the world by traditional geographic consensus?",
+            "options": ["The Amazon", "The Nile", "The Yangtze", "The Mississippi"],
+            "correct": 1,
+            "explanation": "The Nile River spans approximately 6,650 km through northeastern Africa."
+        },
+        # Mathematics & Logic
+        {
+            "topic": "Mathematics & Logic",
+            "q": "What is the value of Euler's identity (e^(i*pi) + 1)?",
+            "options": ["0", "1", "-1", "pi"],
+            "correct": 0,
+            "explanation": "Euler's identity e^(i*pi) + 1 = 0 connects the five most fundamental mathematical constants."
+        },
+        {
+            "topic": "Mathematics & Logic",
+            "q": "How many degrees are in the sum of all interior angles of a pentagon?",
+            "options": ["360°", "540°", "720°", "180°"],
+            "correct": 1,
+            "explanation": "Using (n - 2) * 180°, for n=5: (5 - 2) * 180° = 540°."
+        },
+        # Pop Culture & Gaming
+        {
+            "topic": "Pop Culture & Gaming",
+            "q": "Which iconic video game hero made his debut in the 1981 arcade game Donkey Kong under the name 'Jumpman'?",
+            "options": ["Sonic", "Mario", "Mega Man", "Pac-Man"],
+            "correct": 1,
+            "explanation": "Shigeru Miyamoto's Mario was originally named 'Jumpman' before being renamed for Super Mario Bros."
         }
     ]
 
     def _build_trivia_tab(self) -> QWidget:
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setSpacing(12)
+        layout.setSpacing(10)
 
+        # Controls & Topic Header
         top_bar = QHBoxLayout()
-        self.trivia_status_lbl = QLabel("Test your knowledge and earn XP!")
-        self.trivia_status_lbl.setFont(QFont("Segoe UI", 11, QFont.Weight.DemiBold))
+        top_bar.setSpacing(8)
+
+        self.trivia_status_lbl = QLabel("🧠 Test your knowledge or let AI generate questions!")
+        self.trivia_status_lbl.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
+        self.trivia_status_lbl.setStyleSheet("color: #e2e8f0;")
         top_bar.addWidget(self.trivia_status_lbl)
 
         top_bar.addStretch()
 
-        self.trivia_self_play_btn = QPushButton("🤖 Bot Auto-Answer: OFF")
+        # Topic Selector Dropdown
+        self.trivia_topic_combo = QComboBox()
+        self.trivia_topic_combo.addItems([
+            "All Topics (Shuffle)",
+            "Science & Nature",
+            "Space & Universe",
+            "Computer Science & AI",
+            "World History",
+            "World Geography",
+            "Mathematics & Logic",
+            "Pop Culture & Gaming"
+        ])
+        self.trivia_topic_combo.setStyleSheet("""
+            QComboBox {
+                background: #1e293b;
+                color: #38bdf8;
+                border: 1px solid #334155;
+                border-radius: 6px;
+                padding: 4px 8px;
+                font-size: 11px;
+                font-weight: 500;
+            }
+            QComboBox QAbstractItemView {
+                background: #0f172a;
+                color: #e2e8f0;
+                selection-background-color: #0284c7;
+            }
+        """)
+        self.trivia_topic_combo.currentIndexChanged.connect(self._on_trivia_topic_changed)
+        top_bar.addWidget(self.trivia_topic_combo)
+
+        # Dynamic AI Generate Question Button
+        self.trivia_ai_gen_btn = QPushButton("✨ AI Question")
+        self.trivia_ai_gen_btn.setToolTip("Generate a fresh new trivia question with Frontier AI!")
+        self.trivia_ai_gen_btn.setStyleSheet("""
+            QPushButton {
+                background: linear-gradient(135deg, #0284c7, #38bdf8);
+                color: #0b0f19;
+                font-weight: bold;
+                border: none;
+                border-radius: 6px;
+                padding: 5px 10px;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background: #7dd3fc;
+            }
+        """)
+        self.trivia_ai_gen_btn.clicked.connect(self._generate_ai_trivia_question)
+        top_bar.addWidget(self.trivia_ai_gen_btn)
+
+        # Bot Auto-Answer Toggle
+        self.trivia_self_play_btn = QPushButton("🤖 Bot: OFF")
         self.trivia_self_play_btn.setCheckable(True)
+        self.trivia_self_play_btn.setStyleSheet("border-radius: 6px; padding: 5px 8px; font-size: 11px;")
         self.trivia_self_play_btn.clicked.connect(self._toggle_trivia_self_play)
         top_bar.addWidget(self.trivia_self_play_btn)
 
-        next_btn = QPushButton("⏭️ Next Question")
+        # Next Question Button
+        next_btn = QPushButton("⏭️ Next")
+        next_btn.setStyleSheet("border-radius: 6px; padding: 5px 8px; font-size: 11px;")
         next_btn.clicked.connect(self._next_trivia_question)
         top_bar.addWidget(next_btn)
         layout.addLayout(top_bar)
@@ -630,24 +785,38 @@ class GamesWindow(QWidget):
         card = QFrame()
         card.setStyleSheet("background: #090d16; border: 1px solid #1e293b; border-radius: 10px; padding: 14px;")
         card_layout = QVBoxLayout(card)
+        card_layout.setSpacing(8)
+
+        meta_row = QHBoxLayout()
+        self.trivia_category_lbl = QLabel("🏷️ Science & Nature")
+        self.trivia_category_lbl.setStyleSheet("color: #94a3b8; font-size: 11px; font-weight: bold;")
+        meta_row.addWidget(self.trivia_category_lbl)
+
+        meta_row.addStretch()
+
+        self.trivia_streak_lbl = QLabel("🔥 Streak: 0")
+        self.trivia_streak_lbl.setStyleSheet("color: #f59e0b; font-size: 11px; font-weight: bold;")
+        meta_row.addWidget(self.trivia_streak_lbl)
+        card_layout.addLayout(meta_row)
 
         self.trivia_q_lbl = QLabel("Question Loading...")
         self.trivia_q_lbl.setWordWrap(True)
-        self.trivia_q_lbl.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
-        self.trivia_q_lbl.setStyleSheet("color: #38bdf8; margin-bottom: 10px;")
+        self.trivia_q_lbl.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
+        self.trivia_q_lbl.setStyleSheet("color: #38bdf8; margin: 4px 0 8px 0;")
         card_layout.addWidget(self.trivia_q_lbl)
 
         self.trivia_buttons: List[QPushButton] = []
         for i in range(4):
             btn = QPushButton("")
-            btn.setFont(QFont("Segoe UI", 11))
+            btn.setFont(QFont("Segoe UI", 10))
             btn.setStyleSheet("""
                 QPushButton {
                     background: #1e293b;
                     border: 1px solid #334155;
                     border-radius: 8px;
-                    padding: 8px;
+                    padding: 8px 12px;
                     text-align: left;
+                    color: #f1f5f9;
                 }
                 QPushButton:hover {
                     background: #334155;
@@ -660,21 +829,38 @@ class GamesWindow(QWidget):
 
         self.trivia_explain_lbl = QLabel("")
         self.trivia_explain_lbl.setWordWrap(True)
-        self.trivia_explain_lbl.setStyleSheet("color: #34d399; font-size: 11px; margin-top: 6px;")
+        self.trivia_explain_lbl.setStyleSheet("color: #34d399; font-size: 11px; margin-top: 4px;")
         card_layout.addWidget(self.trivia_explain_lbl)
 
         layout.addWidget(card)
 
         self.curr_trivia_idx = 0
+        self.trivia_streak = 0
         self.trivia_answered = False
         self.trivia_self_play_active = False
+        self.active_ai_thread = None
 
         self._load_trivia_question(0)
         return widget
 
+    def _on_trivia_topic_changed(self):
+        """Filters or loads questions matching selected topic."""
+        self._next_trivia_question()
+
+    def _get_filtered_questions(self) -> List[dict]:
+        topic = self.trivia_topic_combo.currentText()
+        if not topic or "All Topics" in topic:
+            return self.TRIVIA_QUESTIONS
+        filtered = [q for q in self.TRIVIA_QUESTIONS if q.get("topic") == topic]
+        return filtered if filtered else self.TRIVIA_QUESTIONS
+
     def _load_trivia_question(self, idx: int):
-        self.curr_trivia_idx = idx % len(self.TRIVIA_QUESTIONS)
-        q = self.TRIVIA_QUESTIONS[self.curr_trivia_idx]
+        pool = self._get_filtered_questions()
+        self.curr_trivia_idx = idx % len(pool)
+        q = pool[self.curr_trivia_idx]
+
+        self.trivia_category_lbl.setText(f"🏷️ {q.get('topic', 'General Knowledge')}")
+        self.trivia_streak_lbl.setText(f"🔥 Streak: {self.trivia_streak}")
         self.trivia_q_lbl.setText(f"Q{self.curr_trivia_idx + 1}. {q['q']}")
         self.trivia_explain_lbl.setText("")
         self.trivia_answered = False
@@ -687,7 +873,7 @@ class GamesWindow(QWidget):
                     background: #1e293b;
                     border: 1px solid #334155;
                     border-radius: 8px;
-                    padding: 8px;
+                    padding: 8px 12px;
                     text-align: left;
                     color: #f1f5f9;
                 }
@@ -704,7 +890,8 @@ class GamesWindow(QWidget):
         if self.trivia_answered:
             return
         self.trivia_answered = True
-        q = self.TRIVIA_QUESTIONS[self.curr_trivia_idx]
+        pool = self._get_filtered_questions()
+        q = pool[self.curr_trivia_idx]
         correct = q["correct"]
 
         for i, btn in enumerate(self.trivia_buttons):
@@ -714,30 +901,85 @@ class GamesWindow(QWidget):
                 btn.setStyleSheet("background: #7f1d1d; border: 2px solid #ef4444; color: white;")
 
         if selected_idx == correct:
-            self.trivia_explain_lbl.setText(f"✅ Correct! {q['explanation']}")
-            self._award_xp(20, "Trivia Correct Answer")
+            self.trivia_streak += 1
+            streak_bonus = min(25, self.trivia_streak * 5)
+            self.trivia_streak_lbl.setText(f"🔥 Streak: {self.trivia_streak}")
+            self.trivia_explain_lbl.setText(f"✅ Correct! (+{20 + streak_bonus} XP) {q['explanation']}")
+            self._award_xp(20 + streak_bonus, "Trivia Correct Answer")
         else:
+            self.trivia_streak = 0
+            self.trivia_streak_lbl.setText(f"🔥 Streak: 0")
             self.trivia_explain_lbl.setText(f"❌ Not quite. {q['explanation']}")
 
     def _next_trivia_question(self):
         self._load_trivia_question(self.curr_trivia_idx + 1)
 
+    def _generate_ai_trivia_question(self):
+        """Asynchronously requests a live trivia question from AI."""
+        self.trivia_ai_gen_btn.setEnabled(False)
+        self.trivia_ai_gen_btn.setText("✨ AI Generating...")
+        topic = self.trivia_topic_combo.currentText()
+        if "All Topics" in topic:
+            topic = random.choice(["Space", "Quantum Physics", "Computer Science", "Ancient History", "World Geography", "Artificial Intelligence"])
+
+        class Worker(QThread):
+            ready = Signal(dict)
+            failed = Signal(str)
+            def run(self):
+                try:
+                    import json, re
+                    from core.ai_manager import get_ai_manager
+                    ai = get_ai_manager()
+                    p = (
+                        f"Generate 1 unique, fun multiple choice trivia question on topic '{topic}'. "
+                        f"Format as single raw JSON without markdown: "
+                        f'{{"topic": "{topic}", "q": "question?", "options": ["A", "B", "C", "D"], "correct": 0, "explanation": "why A is right"}}'
+                    )
+                    res = ai.generate_chat([{"role": "user", "content": p}], persona="companion")
+                    m = re.search(r"\{.*\}", res, re.DOTALL)
+                    if m:
+                        d = json.loads(m.group(0))
+                        if "q" in d and len(d.get("options", [])) == 4 and "correct" in d:
+                            self.ready.emit(d)
+                            return
+                    self.failed.emit("Invalid format")
+                except Exception as e:
+                    self.failed.emit(str(e))
+
+        self.active_ai_thread = Worker(self)
+        def on_ready(d):
+            self.trivia_ai_gen_btn.setEnabled(True)
+            self.trivia_ai_gen_btn.setText("✨ AI Question")
+            self.TRIVIA_QUESTIONS.append(d)
+            self._load_trivia_question(len(self.TRIVIA_QUESTIONS) - 1)
+            self.trivia_explain_lbl.setText(f"✨ New AI Generated Question loaded! (+10 Discovery XP)")
+            self._award_xp(10, "AI Trivia Discovery")
+
+        def on_failed(err):
+            self.trivia_ai_gen_btn.setEnabled(True)
+            self.trivia_ai_gen_btn.setText("✨ AI Question")
+            self._next_trivia_question()
+
+        self.active_ai_thread.ready.connect(on_ready)
+        self.active_ai_thread.failed.connect(on_failed)
+        self.active_ai_thread.start()
+
     def _toggle_trivia_self_play(self):
         self.trivia_self_play_active = self.trivia_self_play_btn.isChecked()
         if self.trivia_self_play_active:
-            self.trivia_self_play_btn.setText("🤖 Bot Auto-Answer: ON")
+            self.trivia_self_play_btn.setText("🤖 Bot: ON")
             self.trivia_self_play_btn.setStyleSheet("background: #0284c7; color: white;")
             self._trivia_bot_answer()
         else:
-            self.trivia_self_play_btn.setText("🤖 Bot Auto-Answer: OFF")
+            self.trivia_self_play_btn.setText("🤖 Bot: OFF")
             self.trivia_self_play_btn.setStyleSheet("")
 
     def _trivia_bot_answer(self):
         if not self.trivia_self_play_active or self.trivia_answered:
             return
-        q = self.TRIVIA_QUESTIONS[self.curr_trivia_idx]
-        # Bot reasons and chooses correct answer 90% of the time
-        choice = q["correct"] if random.random() < 0.9 else random.randint(0, 3)
+        pool = self._get_filtered_questions()
+        q = pool[self.curr_trivia_idx]
+        choice = q["correct"] if random.random() < 0.88 else random.randint(0, 3)
         self._on_trivia_answer(choice)
         QTimer.singleShot(2500, self._next_trivia_question)
 

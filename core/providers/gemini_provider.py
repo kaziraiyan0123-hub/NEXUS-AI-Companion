@@ -107,26 +107,38 @@ class GeminiProvider(BaseAIProvider):
         temperature: float = 0.7,
         max_tokens: int = 1500
     ) -> str:
-        """Generates a synchronous response."""
+        """Generates a synchronous response with multi-model failover."""
         if not self.api_key:
             raise ValueError("Gemini API key not configured.")
 
         target_model = model or self.default_model
-        url = f"{self.api_base}/models/{target_model}:generateContent?key={self.api_key}"
-        payload = self._format_payload(messages, system_prompt, temperature, max_tokens)
+        models_to_try = [target_model] + [m for m in self.MODELS if m != target_model]
 
-        with httpx.Client(timeout=30.0) as client:
-            resp = client.post(url, json=payload)
-            if resp.status_code != 200:
-                err = resp.json().get("error", {}).get("message", resp.text)
-                raise RuntimeError(f"Gemini API Error [{resp.status_code}]: {err}")
+        last_err = None
+        for m in models_to_try:
+            url = f"{self.api_base}/models/{m}:generateContent?key={self.api_key}"
+            payload = self._format_payload(messages, system_prompt, temperature, max_tokens)
 
-            data = resp.json()
-            candidates = data.get("candidates", [])
-            if candidates:
-                parts = candidates[0].get("content", {}).get("parts", [])
-                return "".join([p.get("text", "") for p in parts])
-            return ""
+            try:
+                with httpx.Client(timeout=30.0) as client:
+                    resp = client.post(url, json=payload)
+                    if resp.status_code != 200:
+                        err = resp.json().get("error", {}).get("message", resp.text)
+                        raise RuntimeError(f"Gemini API Error [{resp.status_code}]: {err}")
+
+                    data = resp.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        return "".join([p.get("text", "") for p in parts])
+                    return ""
+            except Exception as e:
+                last_err = e
+                logger.warning(f"Gemini model '{m}' failed: {e}. Rotating to next Gemini model...")
+                continue
+        if last_err:
+            raise last_err
+        return ""
 
     def generate_stream(
         self,
@@ -136,39 +148,51 @@ class GeminiProvider(BaseAIProvider):
         temperature: float = 0.7,
         max_tokens: int = 1500
     ) -> Generator[str, None, None]:
-        """Streams response tokens using Server-Sent Events (SSE)."""
+        """Streams response tokens using Server-Sent Events (SSE) with seamless model rotation."""
         if not self.api_key:
             raise ValueError("Gemini API key not configured.")
 
         target_model = model or self.default_model
-        url = f"{self.api_base}/models/{target_model}:streamGenerateContent?alt=sse&key={self.api_key}"
-        payload = self._format_payload(messages, system_prompt, temperature, max_tokens)
+        models_to_try = [target_model] + [m for m in self.MODELS if m != target_model]
 
-        with httpx.Client(timeout=45.0) as client:
-            with client.stream("POST", url, json=payload) as response:
-                if response.status_code != 200:
-                    content = response.read().decode("utf-8")
-                    try:
-                        err = json.loads(content).get("error", {}).get("message", content)
-                    except Exception:
-                        err = content
-                    raise RuntimeError(f"Gemini Streaming Error [{response.status_code}]: {err}")
+        last_err = None
+        for m in models_to_try:
+            url = f"{self.api_base}/models/{m}:streamGenerateContent?alt=sse&key={self.api_key}"
+            payload = self._format_payload(messages, system_prompt, temperature, max_tokens)
 
-                for line in response.iter_lines():
-                    if not line:
-                        continue
-                    if line.startswith("data: "):
-                        data_str = line[6:].strip()
-                        if not data_str:
-                            continue
-                        try:
-                            chunk_json = json.loads(data_str)
-                            candidates = chunk_json.get("candidates", [])
-                            if candidates:
-                                parts = candidates[0].get("content", {}).get("parts", [])
-                                for p in parts:
-                                    text_chunk = p.get("text", "")
-                                    if text_chunk:
-                                        yield text_chunk
-                        except Exception as e:
-                            logger.debug(f"Error parsing Gemini SSE chunk: {e}")
+            try:
+                with httpx.Client(timeout=45.0) as client:
+                    with client.stream("POST", url, json=payload) as response:
+                        if response.status_code != 200:
+                            content = response.read().decode("utf-8")
+                            try:
+                                err = json.loads(content).get("error", {}).get("message", content)
+                            except Exception:
+                                err = content
+                            raise RuntimeError(f"Gemini Streaming Error [{response.status_code}]: {err}")
+
+                        for line in response.iter_lines():
+                            if not line:
+                                continue
+                            if line.startswith("data: "):
+                                data_str = line[6:].strip()
+                                if not data_str:
+                                    continue
+                                try:
+                                    chunk_json = json.loads(data_str)
+                                    candidates = chunk_json.get("candidates", [])
+                                    if candidates:
+                                        parts = candidates[0].get("content", {}).get("parts", [])
+                                        for p in parts:
+                                            text_chunk = p.get("text", "")
+                                            if text_chunk:
+                                                yield text_chunk
+                                except Exception as e:
+                                    logger.debug(f"Error parsing Gemini SSE chunk: {e}")
+                        return
+            except Exception as e:
+                last_err = e
+                logger.warning(f"Gemini model '{m}' streaming failed: {e}. Rotating to next model...")
+                continue
+        if last_err:
+            raise last_err

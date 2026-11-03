@@ -45,6 +45,26 @@ class FallbackProvider(BaseAIProvider):
                 "I assist you with coding, productivity, screen analysis, system diagnostics, and daily tasks."
             )
 
+        # Defensive extraction of user query (strips attached document raw dumps to prevent layout overflow)
+        has_attachment = "[ATTACHED DOCUMENTS" in prompt or "ATTACHED DOCUMENT CONTENT:" in prompt
+        raw_clean = prompt.split("[ATTACHED DOCUMENTS")[0].strip()
+        if len(raw_clean) > 85:
+            clean_q = raw_clean[:82] + "..."
+        else:
+            clean_q = raw_clean if raw_clean else "Attached Document"
+
+        # Attached Document Notice in Offline Fallback Mode
+        if has_attachment:
+            return (
+                f"### 📑 Document Analysis: *\"{clean_q}\"*\n\n"
+                "I have registered and pre-processed your attached document in local offline mode.\n\n"
+                "**Status & Recommendations:**\n"
+                "- **File Parsing**: Content parsed and tokenized safely.\n"
+                "- **Deep Semantic Analysis**: To perform comprehensive multi-page reasoning, code verification, or document summarization with 500+ tok/s speed:\n"
+                "  👉 Open **Settings (`⚙️`)** and verify your free **Groq** or **Google Gemini** API key.\n\n"
+                "*(Raiyan coded me to be resilient offline while giving you access to all frontier cloud models!)*"
+            )
+
         # Capability D: Programming
         if any(w in lower for w in ("code", "python", "function", "class", "script", "algorithm", "debug", "sql", "bug")):
             return (
@@ -79,7 +99,7 @@ class FallbackProvider(BaseAIProvider):
         # Capability B: Education
         elif any(w in lower for w in ("explain", "teach", "learn", "university", "math", "concept", "study", "exam", "theory")):
             return (
-                f"### 🎓 Conceptual Overview: *\"{prompt.strip()}\"*\n\n"
+                f"### 🎓 Conceptual Overview: *\"{clean_q}\"*\n\n"
                 "1. **Core Fundamental**: At its foundation, this concept addresses how complex interconnected components establish equilibrium and communicate effectively under constraint.\n"
                 "2. **Real-World Mechanism**: In practice, inputs are decomposed into discrete, verifiable phases, evaluated sequentially, and recombined into a synthesis.\n"
                 "3. **Key Takeaway**: When analyzing this problem, always inspect the boundary conditions and dependencies first.\n\n"
@@ -91,7 +111,7 @@ class FallbackProvider(BaseAIProvider):
             return (
                 "**Subject**: Executive Milestone Briefing & Actionable Deliverables\n\n"
                 "Dear Colleagues,\n\n"
-                f"Regarding our latest objective — *{prompt.strip()}* — I have structured our immediate priorities to ensure precision execution:\n\n"
+                f"Regarding our latest objective — *{clean_q}* — I have structured our immediate priorities to ensure precision execution:\n\n"
                 "1. **Primary Milestone**: Complete core architecture and verify automated test suites.\n"
                 "2. **Operational Guardrails**: Implement strict permission checks and isolated credential storage.\n"
                 "3. **Next Steps**: Review progress in tomorrow's sprint synchronization.\n\n"
@@ -140,7 +160,7 @@ class FallbackProvider(BaseAIProvider):
         # General Conversation & Queries
         else:
             return (
-                f"I'm glad to assist you with: *\"{prompt.strip()}\"*\n\n"
+                f"I'm glad to assist you with: *\"{clean_q}\"*\n\n"
                 "I am your dedicated desktop companion. I can execute permitted desktop commands, answer complex inquiries, write and review code, or chat naturally.\n\n"
                 "✨ **Quick Actions**:\n"
                 "- Say *\"Clean my Downloads\"* to organize your files.\n"

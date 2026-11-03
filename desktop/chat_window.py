@@ -59,6 +59,7 @@ class AdvancedChatWindow(QWidget):
     speech_active = Signal(bool)
     settings_requested = Signal()
     control_panel_requested = Signal()
+    vision_inspect_requested = Signal()
 
     PERSONAS = {
         "companion": ("✦ NEXUS Companion", "Natural, perceptive, witty, and intelligent companion."),
@@ -712,10 +713,19 @@ class AdvancedChatWindow(QWidget):
         att_btn = QPushButton("📎")
         att_btn.setFixedSize(34, 34)
         att_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        att_btn.setToolTip("Attach file (PDF, TXT, Code, CSV, Image)")
+        att_btn.setToolTip("Attach file (PDF, Word, PPTX, Excel, Code, CSV, Image)")
         att_btn.setStyleSheet(self._icon_btn_style())
         att_btn.clicked.connect(self._pick_attachment)
         layout.addWidget(att_btn)
+
+        # Vision button (Inspect active window / screen)
+        vision_btn = QPushButton("👁️")
+        vision_btn.setFixedSize(34, 34)
+        vision_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        vision_btn.setToolTip("Desktop Vision: See Active Window & Get Instant AI Help")
+        vision_btn.setStyleSheet(self._icon_btn_style())
+        vision_btn.clicked.connect(self.vision_inspect_requested.emit)
+        layout.addWidget(vision_btn)
 
         # Text Input
         self.input_edit = ChatInputEdit()
@@ -850,6 +860,19 @@ class AdvancedChatWindow(QWidget):
                     self.attached_files.append(f)
             self._render_attached_chips()
 
+    def add_attachment(self, filepath: str):
+        """Programmatically attaches a file (e.g. active window snapshot) to input bar."""
+        if filepath and filepath not in self.attached_files:
+            self.attached_files.append(filepath)
+            self._render_attached_chips()
+
+    def append_message(self, role: str, text: str):
+        """Appends a new message directly into the active conversation and UI."""
+        active_conv = self.conv_manager.get_active()
+        msg = active_conv.add_message(role, text)
+        self._append_message_widget(msg)
+        self._scroll_to_bottom()
+
     def _render_attached_chips(self):
         while self.att_layout.count():
             item = self.att_layout.takeAt(0)
@@ -863,10 +886,26 @@ class AdvancedChatWindow(QWidget):
         self.att_container.setVisible(True)
         for filepath in self.attached_files:
             fname = os.path.basename(filepath)
+            ext = os.path.splitext(fname)[1].lower()
+            if "vision" in fname.lower() or ext in (".png", ".jpg", ".jpeg"):
+                badge_icon = "👁️ Vision"
+            elif ext == ".pdf":
+                badge_icon = "📑 PDF"
+            elif ext in (".docx", ".doc"):
+                badge_icon = "📄 Word"
+            elif ext in (".pptx", ".ppt"):
+                badge_icon = "📊 PPT"
+            elif ext in (".xlsx", ".xls"):
+                badge_icon = "📈 Excel"
+            elif ext in (".py", ".js", ".ts", ".html", ".css", ".json", ".sql"):
+                badge_icon = "💻 Code"
+            else:
+                badge_icon = "📝 File"
+
             chip = QFrame()
             chip.setStyleSheet("""
-                background: rgba(56, 189, 248, 0.1);
-                border: 1px solid rgba(56, 189, 248, 0.3);
+                background: rgba(56, 189, 248, 0.12);
+                border: 1px solid rgba(56, 189, 248, 0.4);
                 border-radius: 6px;
                 padding: 1px 6px;
             """)
@@ -874,8 +913,8 @@ class AdvancedChatWindow(QWidget):
             c_layout.setContentsMargins(4, 2, 4, 2)
             c_layout.setSpacing(4)
 
-            lbl = QLabel(f"📄 {fname}")
-            lbl.setStyleSheet("color: #38bdf8; font-size: 11px;")
+            lbl = QLabel(f"{badge_icon}: {fname}")
+            lbl.setStyleSheet("color: #38bdf8; font-size: 11px; font-weight: 500;")
             c_layout.addWidget(lbl)
 
             rm_btn = QPushButton("✕")

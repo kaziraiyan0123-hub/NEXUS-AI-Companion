@@ -90,6 +90,7 @@ class NexusAssistant(QObject):
         self.chat_window.settings_requested.connect(self.on_settings_requested)
         self.chat_window.control_panel_requested.connect(self.open_control_panel)
         self.chat_window.stop_generation_requested.connect(self.on_stop_generation_requested)
+        self.chat_window.vision_inspect_requested.connect(self.on_vision_inspect_requested)
 
         # 8. Initialize Floating Quick-Action Command Dock
         self.dock = NexusDockWidget(self)
@@ -314,6 +315,53 @@ class NexusAssistant(QObject):
         logger.info("Dock Vision requested: Analyzing screen.")
         self.trigger_tool("analyze_screen", {"query": "Analyze active screen context and provide key insights"})
 
+    @Slot()
+    def on_vision_inspect_requested(self):
+        """Captures active window/desktop screenshot and initiates vision assistance."""
+        try:
+            import tempfile
+            from PySide6.QtGui import QGuiApplication
+            
+            screen = QGuiApplication.primaryScreen()
+            if not screen:
+                self.chat_window.append_message("assistant", "⚠️ Could not acquire screen for vision analysis.")
+                return
+
+            pixmap = screen.grabWindow(0)
+            temp_path = os.path.join(tempfile.gettempdir(), f"nexus_vision_{int(time.time()*1000)}.png")
+            pixmap.save(temp_path, "PNG")
+
+            active_title = "Desktop / Windows Workspace"
+            try:
+                import ctypes
+                hwnd = ctypes.windll.user32.GetForegroundWindow()
+                length = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
+                buff = ctypes.create_unicode_buffer(length + 1)
+                ctypes.windll.user32.GetWindowTextW(hwnd, buff, length + 1)
+                t = buff.value.strip()
+                if t and t not in ("NEXUS", "NEXUS Desktop Companion", "NEXUS AI"):
+                    active_title = t
+            except Exception:
+                pass
+
+            # Attach this snapshot to chat input
+            self.chat_window.add_attachment(temp_path)
+
+            # Post assistant greeting asking how NEXUS can help with this window
+            greeting = (
+                f"👁️ **I see your active window: `{active_title}`!**\n\n"
+                f"I've captured a screen snapshot ({screen.size().width()}x{screen.size().height()}) and attached it below.\n\n"
+                f"**What can I help you with regarding {active_title}?**\n"
+                f"*(Feel free to type any question: ask me to explain what's on screen, debug errors or code, summarize, or give advice!)*"
+            )
+            self.chat_window.append_message("assistant", greeting)
+            self.pet.play_animation(CharacterState.WORKING, duration_sec=2.5)
+            self.pet.say(f"I see {active_title}! What can I help with?", 3500)
+            self.chat_window.input_edit.setFocus()
+        except Exception as e:
+            logger.error(f"Vision inspect error: {e}", exc_info=True)
+            self.chat_window.append_message("assistant", f"⚠️ Vision capture issue: `{e}`")
+
     def _on_proactive_companion_tick(self):
         """Gentle non-intrusive wellness, hydration & focus nudges (like Dot / Duet)."""
         if not self.is_active or self.pet.is_sleeping():
@@ -466,34 +514,40 @@ class NexusAssistant(QObject):
         for msg in active_conv.messages:
             messages.append({"role": msg.role, "content": msg.content})
 
-        if attachments:
-            from core.document_processor import DocumentProcessor
-            enriched_prompt, parsed_meta = DocumentProcessor.build_prompt_with_attachments(prompt, attachments)
-            if messages:
-                messages[-1]["content"] = enriched_prompt
+        try:
+            if attachments:
+                from core.document_processor import DocumentProcessor
+                enriched_prompt, parsed_meta = DocumentProcessor.build_prompt_with_attachments(prompt, attachments)
+                if messages:
+                    messages[-1]["content"] = enriched_prompt
 
-            # Animate reading / studying state on desktop pet
-            file_names = ", ".join([os.path.basename(a) for a in attachments])
-            self.pet.play_animation(CharacterState.WORKING, duration_sec=3.0)
-            self.pet.say(f"Reading & analyzing {file_names}...", 3000)
+                # Animate reading / studying state on desktop pet
+                file_names = ", ".join([os.path.basename(a) for a in attachments])
+                self.pet.play_animation(CharacterState.WORKING, duration_sec=3.0)
+                self.pet.say(f"Reading & analyzing {file_names}...", 3000)
 
-        # Initialize stream bubble in chat window
-        self.chat_window.begin_stream_response()
+            # Initialize stream bubble in chat window
+            self.chat_window.begin_stream_response()
 
-        # Launch background AI worker
-        persona = self.chat_window.active_persona
-        model = self.settings.get("ai_model")
+            # Launch background AI worker
+            persona = self.chat_window.active_persona
+            model = self.settings.get("ai_model")
 
-        self.current_worker = AIWorkerThread(
-            messages=messages,
-            persona=persona,
-            model_override=model,
-            parent=self
-        )
-        self.current_worker.token_generated.connect(self._on_worker_token)
-        self.current_worker.generation_finished.connect(self._on_worker_finished)
-        self.current_worker.error_occurred.connect(self._on_worker_error)
-        self.current_worker.start()
+            self.current_worker = AIWorkerThread(
+                messages=messages,
+                persona=persona,
+                model_override=model,
+                parent=self
+            )
+            self.current_worker.token_generated.connect(self._on_worker_token)
+            self.current_worker.generation_finished.connect(self._on_worker_finished)
+            self.current_worker.error_occurred.connect(self._on_worker_error)
+            self.current_worker.start()
+        except Exception as e:
+            logger.error(f"Error launching AI inference worker: {e}", exc_info=True)
+            self.chat_window.append_message("assistant", f"⚠️ **Processing Notice**: Could not parse request or attachment: `{e}`. Please check the file and try again.")
+            self.chat_window.set_generating(False)
+            self.pet.play_animation(CharacterState.CONFUSED, duration_sec=2.5)
 
     @Slot(str)
     def _on_worker_token(self, token: str):

@@ -1385,7 +1385,13 @@
     }
     appendChatMessage('user', userMsgText);
 
-    conversationHistory.push({ role: 'user', content: query || `Inspect attached ${attCopy?.name}` });
+    let promptText = query;
+    if (attCopy && attCopy.content) {
+      promptText = `[Attached File: "${attCopy.name}" (${attCopy.type})]:\n${attCopy.content.substring(0, 16000)}\n\n${query || "Please analyze, explain, and summarize this attached document in detail."}`;
+    } else if (attCopy && attCopy.isImage) {
+      promptText = query || "Please analyze this attached photo in detail and describe what you see.";
+    }
+    conversationHistory.push({ role: 'user', content: promptText });
 
     updateBubble("Thinking with Frontier AI...");
     playTone(550, 'sine', 0.08);
@@ -1755,47 +1761,131 @@
 
   // 3. AI Brain Trivia Quiz Suite
   const TRIVIA = [
+    // Science & Biology
     {
-      cat: "Architecture & Lore",
-      q: "Who coded the NEXUS AI Companion architecture?",
-      opts: ["Raiyan", "Anonymous", "OpenAI", "NASA"],
-      ans: 0,
-      exp: "Raiyan coded me! I am NEXUS, your personal autonomous AI companion."
-    },
-    {
-      cat: "Biology & Life Sciences",
+      cat: "Science & Nature",
       q: "Which gas is released by green plants during photosynthesis?",
       opts: ["Oxygen (O2)", "Carbon Dioxide", "Helium", "Methane"],
       ans: 0,
       exp: "Plants convert CO2 and water into glucose and Oxygen!"
     },
     {
-      cat: "Computer Science & Python",
-      q: "In Python, which built-in function returns the number of items in a sequence?",
-      opts: ["count()", "size()", "len()", "length()"],
-      ans: 2,
-      exp: "len() is the standard Python built-in to return length."
+      cat: "Science & Nature",
+      q: "What is the powerhouse organelle of eukaryotic cells responsible for producing ATP?",
+      opts: ["Ribosome", "Mitochondria", "Endoplasmic Reticulum", "Golgi"],
+      ans: 1,
+      exp: "Mitochondria generate most cellular ATP via oxidative phosphorylation."
     },
     {
-      cat: "Astrophysics & Relativity",
+      cat: "Science & Nature",
+      q: "What is the chemical symbol and atomic number of Gold?",
+      opts: ["Ag (47)", "Fe (26)", "Au (79)", "Pt (78)"],
+      ans: 2,
+      exp: "Gold is Au (from Latin 'aurum') with atomic number 79."
+    },
+    // Space & Cosmos
+    {
+      cat: "Space & Universe",
       q: "What is the universal gravitational constant symbolized by?",
       opts: ["g", "G", "C", "h"],
       ans: 1,
       exp: "Capital G represents the universal gravitational constant in Newton's law: F = G*(m1*m2)/r^2."
     },
     {
-      cat: "Frontier AI & Neural Nets",
+      cat: "Space & Universe",
+      q: "Which planet in our solar system has the shortest orbital period around the Sun?",
+      opts: ["Mercury (88 days)", "Venus", "Mars", "Jupiter"],
+      ans: 0,
+      exp: "Mercury completes one orbit in approximately 88 Earth days."
+    },
+    {
+      cat: "Space & Universe",
+      q: "What is the point of no return surrounding a black hole where light cannot escape?",
+      opts: ["Photon Sphere", "Ergosphere", "Event Horizon", "Accretion Disk"],
+      ans: 2,
+      exp: "The event horizon is the boundary beyond which escape velocity exceeds the speed of light."
+    },
+    // Computer Science & AI
+    {
+      cat: "Computer Science & AI",
+      q: "Who coded the NEXUS AI Companion architecture?",
+      opts: ["Raiyan", "Anonymous", "OpenAI", "NASA"],
+      ans: 0,
+      exp: "Raiyan coded me! I am NEXUS, your personal autonomous AI companion."
+    },
+    {
+      cat: "Computer Science & AI",
+      q: "In Python, which built-in function returns the number of items in a sequence?",
+      opts: ["count()", "size()", "len()", "length()"],
+      ans: 2,
+      exp: "len() is the standard Python built-in to return length in O(1) time."
+    },
+    {
+      cat: "Computer Science & AI",
       q: "Which architecture introduced self-attention mechanisms in modern LLMs?",
       opts: ["Transformer", "RNN", "Markov Chain", "Perceptron"],
       ans: 0,
-      exp: "The Transformer architecture (Vaswani et al., 2017) revolutionized natural language processing with attention mechanisms."
+      exp: "The Transformer architecture (Vaswani et al., 2017) revolutionized AI with parallelized self-attention."
     },
     {
-      cat: "Quantum Physics",
-      q: "Which principle states that position and momentum cannot both be precisely measured simultaneously?",
-      opts: ["Heisenberg Uncertainty", "Pauli Exclusion", "Fermi Paradox", "Hooke's Law"],
+      cat: "Computer Science & AI",
+      q: "What is the average time complexity of QuickSort on randomized input arrays?",
+      opts: ["O(n)", "O(n log n)", "O(n²)", "O(log n)"],
+      ans: 1,
+      exp: "QuickSort and MergeSort run in O(n log n) average time complexity."
+    },
+    // World History
+    {
+      cat: "World History",
+      q: "In which ancient civilization was the Great Pyramid of Giza constructed?",
+      opts: ["Mesopotamia", "Ancient Egypt", "Ancient Greece", "Indus Valley"],
+      ans: 1,
+      exp: "Built during Egypt's Fourth Dynasty for Pharaoh Khufu circa 2560 BCE."
+    },
+    {
+      cat: "World History",
+      q: "Which invention by Johannes Gutenberg revolutionized book publishing in 1440?",
+      opts: ["Steam Engine", "Movable Type Press", "The Astrolabe", "Compass"],
+      ans: 1,
+      exp: "Gutenberg's movable type printing press democratized literacy across the globe."
+    },
+    // World Geography
+    {
+      cat: "World Geography",
+      q: "What is the deepest known oceanic trench on planet Earth?",
+      opts: ["Java Trench", "Puerto Rico Trench", "Mariana Trench", "Tonga Trench"],
+      ans: 2,
+      exp: "Challenger Deep in the Mariana Trench reaches approximately 10,994 meters."
+    },
+    {
+      cat: "World Geography",
+      q: "Which is the longest river in the world by traditional geographic consensus?",
+      opts: ["The Amazon", "The Nile", "The Yangtze", "The Mississippi"],
+      ans: 1,
+      exp: "The Nile River spans approximately 6,650 km across northeastern Africa."
+    },
+    // Mathematics & Logic
+    {
+      cat: "Mathematics & Logic",
+      q: "What is the evaluated result of Euler's identity: e^(i*pi) + 1?",
+      opts: ["0", "1", "-1", "pi"],
       ans: 0,
-      exp: "Heisenberg's Uncertainty Principle (Δx · Δp ≥ ℏ/2) sets a fundamental limit to quantum precision."
+      exp: "Euler's identity beautifully links e, i, pi, 1, and 0: e^(i*pi) + 1 = 0."
+    },
+    {
+      cat: "Mathematics & Logic",
+      q: "How many degrees are in the sum of all interior angles of a pentagon?",
+      opts: ["360°", "540°", "720°", "180°"],
+      ans: 1,
+      exp: "(n - 2) * 180° = (5 - 2) * 180° = 540°."
+    },
+    // Pop Culture & Gaming
+    {
+      cat: "Pop Culture & Gaming",
+      q: "Which video game character debuted in 1981 under the name 'Jumpman'?",
+      opts: ["Sonic", "Mario", "Mega Man", "Pac-Man"],
+      ans: 1,
+      exp: "Mario was originally named 'Jumpman' in Donkey Kong before his legendary series began."
     }
   ];
 
@@ -1804,10 +1894,22 @@
   const triviaOptions = document.getElementById('triviaOptions');
   const triviaExplanation = document.getElementById('triviaExplanation');
   const triviaNextBtn = document.getElementById('triviaNextBtn');
+  const triviaCategorySelect = document.getElementById('triviaCategorySelect');
+  const triviaAiGenBtn = document.getElementById('triviaAiGenBtn');
+
+  function getFilteredTrivia() {
+    if (!triviaCategorySelect || triviaCategorySelect.value === 'all') {
+      return TRIVIA;
+    }
+    const sel = triviaCategorySelect.value;
+    const filtered = TRIVIA.filter(t => t.cat === sel);
+    return filtered.length > 0 ? filtered : TRIVIA;
+  }
 
   function loadTrivia(idx) {
-    currentTriviaIdx = idx % TRIVIA.length;
-    const item = TRIVIA[currentTriviaIdx];
+    const pool = getFilteredTrivia();
+    currentTriviaIdx = idx % pool.length;
+    const item = pool[currentTriviaIdx];
     if (triviaCategoryEl) triviaCategoryEl.textContent = item.cat || "Science & Tech";
     if (triviaStreakEl) triviaStreakEl.textContent = `🔥 Streak: ${triviaStreak}`;
 
@@ -1840,6 +1942,46 @@
         }
       });
       triviaOptions.appendChild(btn);
+    });
+  }
+
+  if (triviaCategorySelect) {
+    triviaCategorySelect.addEventListener('change', () => {
+      loadTrivia(0);
+    });
+  }
+
+  if (triviaAiGenBtn) {
+    triviaAiGenBtn.addEventListener('click', async () => {
+      triviaAiGenBtn.disabled = true;
+      triviaAiGenBtn.textContent = '✨ Generating...';
+      const cat = triviaCategorySelect ? triviaCategorySelect.value : 'General Knowledge';
+      const prompt = `Generate 1 unique multiple choice trivia question on topic '${cat === 'all' ? 'Science and Technology' : cat}'. Respond ONLY with a valid raw JSON object with keys: {"cat": "${cat === 'all' ? 'Science' : cat}", "q": "question text", "opts": ["Option 1", "Option 2", "Option 3", "Option 4"], "ans": 0, "exp": "explanation"}. No markdown backticks.`;
+
+      try {
+        const reply = await window.NexusMobileAI.queryAI(prompt, 'academic');
+        const match = reply.match(/\{[\s\S]*\}/);
+        if (match) {
+          const newQ = JSON.parse(match[0]);
+          if (newQ.q && Array.isArray(newQ.opts) && newQ.opts.length === 4 && typeof newQ.ans === 'number') {
+            TRIVIA.push(newQ);
+            loadTrivia(TRIVIA.length - 1);
+            addXP(10, "AI Trivia Discovery");
+            triviaExplanation.textContent = "✨ Fresh AI-generated question loaded! (+10 Discovery XP)";
+            playTone(800, 'sine', 0.15);
+          } else {
+            loadTrivia(currentTriviaIdx + 1);
+          }
+        } else {
+          loadTrivia(currentTriviaIdx + 1);
+        }
+      } catch (e) {
+        console.warn("AI Trivia Gen Error:", e);
+        loadTrivia(currentTriviaIdx + 1);
+      } finally {
+        triviaAiGenBtn.disabled = false;
+        triviaAiGenBtn.textContent = '✨ AI Question';
+      }
     });
   }
 

@@ -157,6 +157,8 @@ class AIManager:
 
         temp = float(self.settings.get("temperature", 0.7))
         max_tokens = int(self.settings.get("max_tokens", 1500))
+        # Enforce rate limit cap on Groq to protect against 1000 OTPM limit
+        active_max_tokens = min(max_tokens, 800) if provider.name == "groq" else max_tokens
         sys_prompt = self.get_system_prompt(persona)
 
         logger.info(f"AI Stream started using provider: '{provider.name}', model: '{model}'")
@@ -167,7 +169,7 @@ class AIManager:
                 system_prompt=sys_prompt,
                 model=model,
                 temperature=temp,
-                max_tokens=max_tokens
+                max_tokens=active_max_tokens
             )
             return
         except Exception as e:
@@ -182,6 +184,7 @@ class AIManager:
             if not alt_key:
                 continue
             try:
+                alt_max = min(max_tokens, 800) if alt == "groq" else max_tokens
                 if alt == "groq":
                     alt_prov = GroqProvider(api_key=alt_key)
                 elif alt == "gemini":
@@ -197,7 +200,7 @@ class AIManager:
                     system_prompt=sys_prompt,
                     model=alt_prov.default_model,
                     temperature=temp,
-                    max_tokens=max_tokens
+                    max_tokens=alt_max
                 )
                 return
             except Exception as alt_err:

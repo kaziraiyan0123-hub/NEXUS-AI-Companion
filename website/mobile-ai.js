@@ -126,6 +126,21 @@ window.NexusMobileAI = (function () {
       sysPrompt += ` The user's name is ${savedName}. Address them warmly.`;
     }
 
+    // Prepare standard message history for Groq and OpenRouter
+    const apiMessages = [{ role: "system", content: sysPrompt }];
+    const recentHistory = conversationMessages.slice(-10);
+    for (let i = 0; i < recentHistory.length; i++) {
+      const msg = recentHistory[i];
+      let content = msg.content || "";
+      if (i === recentHistory.length - 1 && attachment && attachment.content) {
+        content = `[Attached Document: "${attachment.name}" (${attachment.type})]:\n\`\`\`\n${attachment.content.substring(0, 16000)}\n\`\`\`\n\n${content || "Please inspect and summarize this document."}`;
+      }
+      apiMessages.push({
+        role: msg.role === "assistant" ? "assistant" : "user",
+        content: content
+      });
+    }
+
     // Provider preference: Default to Groq for near-instant latency or Gemini for multimodal vision
     const activeProvider = localStorage.getItem("nexus_active_provider") || (attachment?.isImage ? "gemini" : "groq");
 
@@ -137,7 +152,6 @@ window.NexusMobileAI = (function () {
       for (const model of geminiModels) {
         try {
           const contents = [];
-          const recentHistory = conversationMessages.slice(-10);
 
           for (let i = 0; i < recentHistory.length; i++) {
             const msg = recentHistory[i];
@@ -184,7 +198,7 @@ window.NexusMobileAI = (function () {
               contents: contents,
               generationConfig: {
                 temperature: 0.7,
-                maxOutputTokens: 1500
+                maxOutputTokens: 1200
               }
             }),
             signal: controller.signal
@@ -210,20 +224,6 @@ window.NexusMobileAI = (function () {
       const groqKey = localStorage.getItem("nexus_groq_key") || DEFAULT_GROQ_KEY;
       if (!groqKey) return null;
 
-      let apiMessages = [{ role: "system", content: sysPrompt }];
-      const recentHistory = conversationMessages.slice(-10);
-      for (let i = 0; i < recentHistory.length; i++) {
-        const msg = recentHistory[i];
-        let content = msg.content;
-        if (i === recentHistory.length - 1 && attachment && attachment.content) {
-          content = `[Attached Document: "${attachment.name}" (${attachment.type})]:\n\`\`\`\n${attachment.content.substring(0, 16000)}\n\`\`\`\n\n${content || "Please inspect and summarize this document."}`;
-        }
-        apiMessages.push({
-          role: msg.role === "assistant" ? "assistant" : "user",
-          content: content
-        });
-      }
-
       const groqModels = ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "allam-2-7b"];
       for (const model of groqModels) {
         try {
@@ -239,7 +239,7 @@ window.NexusMobileAI = (function () {
             body: JSON.stringify({
               model: model,
               messages: apiMessages,
-              max_tokens: 1200,
+              max_tokens: 800, // Safe token cap preventing 1000 OTPM rate limit
               temperature: 0.7
             }),
             signal: controller.signal

@@ -23,7 +23,7 @@ logger = logging.getLogger("NEXUS.DocumentProcessor")
 class DocumentProcessor:
     """Intelligent multi-format document content extractor for NEXUS."""
 
-    MAX_CHARS_PER_FILE = 65000  # ~15,000 to 18,000 words per document
+    MAX_CHARS_PER_FILE = 35000  # ~8,000 to 9,000 words per document (prevents buffer overrun)
 
     @classmethod
     def extract_file_content(cls, filepath: str) -> Tuple[bool, str, Dict[str, Any]]:
@@ -91,10 +91,32 @@ class DocumentProcessor:
             meta["file_type"] = "Text Document"
             return cls._extract_text_file(filepath, meta)
 
-        # 8. Fallback generic text attempt
+        # 8. Images (Multimodal Vision)
+        elif ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".ico", ".tiff"):
+            meta["file_type"] = "Image (Vision)"
+            return cls._extract_image_file(filepath, meta)
+
+        # 9. Fallback generic text attempt
         else:
             meta["file_type"] = "Document"
             return cls._extract_text_file(filepath, meta)
+
+    @classmethod
+    def _extract_image_file(cls, filepath: str, meta: Dict[str, Any]) -> Tuple[bool, str, Dict[str, Any]]:
+        """Extracts image metadata and readies it for vision analysis without corrupting text stream."""
+        dim_str = ""
+        try:
+            from PIL import Image
+            with Image.open(filepath) as img:
+                w, h = img.size
+                fmt = img.format
+                meta["dimensions"] = f"{w}x{h}"
+                meta["image_format"] = fmt
+                dim_str = f", dimensions {w}x{h}, format {fmt}"
+        except Exception:
+            pass
+        header = f"🖼️ **Attached Image:** `{meta['filename']}` ({meta['size_kb']} KB{dim_str})\n[Image provided for visual inspection and analysis]"
+        return True, header, meta
 
     @classmethod
     def _extract_docx(cls, filepath: str, meta: Dict[str, Any]) -> Tuple[bool, str, Dict[str, Any]]:
@@ -353,20 +375,41 @@ class DocumentProcessor:
         meta: Dict[str, Any],
         code_fence: Optional[str] = None
     ) -> Tuple[bool, str, Dict[str, Any]]:
-        """Extracts text or source code from files with encoding fallbacks."""
+        """Extracts text or source code from files with encoding fallbacks and binary protection."""
+        # Pre-check for binary files using null-byte detection
+        try:
+            with open(filepath, "rb") as bf:
+                chunk = bf.read(2048)
+                if b"\x00" in chunk:
+                    # File contains null bytes -> Binary file
+                    meta["file_type"] = "Binary File"
+                    printable = re.findall(rb"[a-zA-Z0-9_\-\.\:\/ ]{4,}", chunk)
+                    strings_preview = " ".join(s.decode("ascii", errors="ignore") for s in printable[:25])
+                    content = (
+                        f"📦 **Binary File Attached:** `{meta['filename']}` ({meta['size_kb']} KB)\n"
+                        f"[File contains non-text binary data. Extracted string identifiers: {strings_preview}...]"
+                    )
+                    return True, content, meta
+        except Exception as e:
+            logger.debug(f"Binary probe error on {filepath}: {e}")
+
         content = None
-        encodings = ["utf-8", "utf-8-sig", "latin1", "cp1252", "ascii"]
+        encodings = ["utf-8", "utf-8-sig", "cp1252", "latin1"]
 
         for enc in encodings:
             try:
-                with open(filepath, "r", encoding=enc) as f:
+                with open(filepath, "r", encoding=enc, errors="replace" if enc == "latin1" else "strict") as f:
                     content = f.read()
                 break
             except (UnicodeDecodeError, Exception):
                 continue
 
         if content is None:
-            return False, f"Could not decode text file '{meta['filename']}'. Binary or unsupported encoding.", meta
+            try:
+                with open(filepath, "r", encoding="utf-8", errors="replace") as f:
+                    content = f.read()
+            except Exception:
+                return False, f"Could not decode text file '{meta['filename']}'. Unsupported format.", meta
 
         truncated = False
         if len(content) > cls.MAX_CHARS_PER_FILE:
