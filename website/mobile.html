@@ -231,6 +231,7 @@
           <button class="game-tab-btn active" id="gameTabTtt">❌ Tic-Tac-Toe</button>
           <button class="game-tab-btn" id="gameTabMem">🧠 Memory Matrix</button>
           <button class="game-tab-btn" id="gameTabTrivia">⚡ Brain Trivia</button>
+          <button class="game-tab-btn" id="gameTabChess">♟️ 2D Chess</button>
         </div>
 
         <!-- Bot Autonomous Self-Play Toggle Pill -->
@@ -321,7 +322,14 @@
                 <option value="Mathematics & Logic">Math & Logic</option>
                 <option value="Pop Culture & Gaming">Pop Culture & Gaming</option>
               </select>
+              <select id="triviaDifficultySelect" class="trivia-select" style="background:#1e293b; color:#34d399; border:1px solid #334155; border-radius:6px; padding:4px 6px; font-size:12px; outline:none;">
+                <option value="all">All Levels</option>
+                <option value="easy">🟢 Easy</option>
+                <option value="medium">🟡 Medium</option>
+                <option value="hard">🔴 Hard</option>
+              </select>
               <button class="game-action-btn" id="triviaAiGenBtn" style="background:linear-gradient(135deg, #0284c7, #38bdf8); color:#0b0f19; font-weight:bold; font-size:11px;">✨ AI Question</button>
+              <button class="game-action-btn" id="triviaAutoNextBtn" style="font-size:11px; background:#065f46; color:#ffffff;">⚡ Auto: ON</button>
               <button class="game-action-btn" id="triviaNextBtn" style="font-size:11px;">⏭️ Next</button>
             </div>
           </div>
@@ -332,6 +340,36 @@
               <!-- 4 trivia option buttons -->
             </div>
             <div class="trivia-explanation" id="triviaExplanation"></div>
+          </div>
+        </div>
+
+        <!-- Game 4: 2D Chess (Player vs AI & Bot vs Bot) -->
+        <div class="game-card" id="gameChessSection" style="display:none;">
+          <div class="game-card-header" style="flex-direction:column; align-items:stretch; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="game-status" id="chessStatus">White's Turn (Your Move)</span>
+              <span class="streak-badge" id="chessMoveCount">Move: 0</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+              <div class="diff-pills" style="margin:0;">
+                <button class="diff-pill chess-diff-pill active" data-diff="casual">Casual</button>
+                <button class="diff-pill chess-diff-pill" data-diff="tactical">Tactical</button>
+                <button class="diff-pill chess-diff-pill" data-diff="master">Master</button>
+              </div>
+              <button class="game-action-btn" id="chessResetBtn" style="font-size:11px;">🔄 New Game</button>
+            </div>
+          </div>
+          <div class="chess-board-wrap">
+            <div class="chess-grid" id="chessGrid">
+              <!-- 64 chess cells generated dynamically -->
+            </div>
+          </div>
+          <div class="chess-info-row">
+            <div class="chess-caps" id="chessCapturedWhite">White: None</div>
+            <div class="chess-caps" id="chessCapturedBlack">Black: None</div>
+          </div>
+          <div class="game-dialogue" id="chessDialogue">
+            NEXUS: "Chess board ready! Tap any white piece to preview valid moves, then tap a highlighted green square."
           </div>
         </div>
 

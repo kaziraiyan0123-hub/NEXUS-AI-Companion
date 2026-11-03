@@ -9,7 +9,7 @@ and accumulates idle XP for the player!
 """
 import random
 import logging
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from PySide6.QtCore import Qt, QPoint, QTimer, Signal, QThread
 from PySide6.QtGui import QFont, QCursor, QColor
@@ -39,8 +39,8 @@ class GamesWindow(QWidget):
 
     def _setup_window(self):
         self.setWindowTitle("NEXUS Arcade & Brain Games")
-        self.resize(520, 560)
-        self.setMinimumSize(480, 520)
+        self.resize(560, 660)
+        self.setMinimumSize(520, 600)
         self.setWindowFlags(
             Qt.WindowType.Window |
             Qt.WindowType.WindowStaysOnTopHint |
@@ -132,6 +132,7 @@ class GamesWindow(QWidget):
         tabs.addTab(self._build_tictactoe_tab(), "❌ Tic-Tac-Toe")
         tabs.addTab(self._build_memory_tab(), "🧠 Memory Matrix")
         tabs.addTab(self._build_trivia_tab(), "⚡ AI Trivia Quiz")
+        tabs.addTab(self._build_chess_tab(), "♟️ 2D Chess")
         main_layout.addWidget(tabs)
 
     # -------------------------------------------------------------
@@ -747,6 +748,33 @@ class GamesWindow(QWidget):
         self.trivia_topic_combo.currentIndexChanged.connect(self._on_trivia_topic_changed)
         top_bar.addWidget(self.trivia_topic_combo)
 
+        # Difficulty Level Dropdown
+        self.trivia_diff_combo = QComboBox()
+        self.trivia_diff_combo.addItems([
+            "All Levels",
+            "🟢 Easy",
+            "🟡 Medium",
+            "🔴 Hard"
+        ])
+        self.trivia_diff_combo.setStyleSheet("""
+            QComboBox {
+                background: #1e293b;
+                color: #34d399;
+                border: 1px solid #334155;
+                border-radius: 6px;
+                padding: 4px 6px;
+                font-size: 11px;
+                font-weight: 500;
+            }
+            QComboBox QAbstractItemView {
+                background: #0f172a;
+                color: #e2e8f0;
+                selection-background-color: #059669;
+            }
+        """)
+        self.trivia_diff_combo.currentIndexChanged.connect(self._on_trivia_topic_changed)
+        top_bar.addWidget(self.trivia_diff_combo)
+
         # Dynamic AI Generate Question Button
         self.trivia_ai_gen_btn = QPushButton("✨ AI Question")
         self.trivia_ai_gen_btn.setToolTip("Generate a fresh new trivia question with Frontier AI!")
@@ -757,7 +785,7 @@ class GamesWindow(QWidget):
                 font-weight: bold;
                 border: none;
                 border-radius: 6px;
-                padding: 5px 10px;
+                padding: 5px 8px;
                 font-size: 11px;
             }
             QPushButton:hover {
@@ -767,15 +795,24 @@ class GamesWindow(QWidget):
         self.trivia_ai_gen_btn.clicked.connect(self._generate_ai_trivia_question)
         top_bar.addWidget(self.trivia_ai_gen_btn)
 
+        # Auto-Next Loop Toggle
+        self.trivia_auto_next_btn = QPushButton("⚡ Auto: ON")
+        self.trivia_auto_next_btn.setCheckable(True)
+        self.trivia_auto_next_btn.setChecked(True)
+        self.trivia_auto_next_btn.setStyleSheet("border-radius: 6px; padding: 5px 7px; font-size: 11px; background: #065f46; color: white;")
+        self.trivia_auto_next_btn.clicked.connect(self._toggle_trivia_auto_next)
+        top_bar.addWidget(self.trivia_auto_next_btn)
+
         # Bot Auto-Answer Toggle
         self.trivia_self_play_btn = QPushButton("🤖 Bot: OFF")
         self.trivia_self_play_btn.setCheckable(True)
-        self.trivia_self_play_btn.setStyleSheet("border-radius: 6px; padding: 5px 8px; font-size: 11px;")
+        self.trivia_self_play_btn.setStyleSheet("border-radius: 6px; padding: 5px 7px; font-size: 11px;")
         self.trivia_self_play_btn.clicked.connect(self._toggle_trivia_self_play)
         top_bar.addWidget(self.trivia_self_play_btn)
 
         # Next Question Button
-        next_btn = QPushButton("⏭️ Next")
+        next_btn = QPushButton("⏭️")
+        next_btn.setToolTip("Skip to Next Question")
         next_btn.setStyleSheet("border-radius: 6px; padding: 5px 8px; font-size: 11px;")
         next_btn.clicked.connect(self._next_trivia_question)
         top_bar.addWidget(next_btn)
@@ -849,10 +886,38 @@ class GamesWindow(QWidget):
 
     def _get_filtered_questions(self) -> List[dict]:
         topic = self.trivia_topic_combo.currentText()
-        if not topic or "All Topics" in topic:
-            return self.TRIVIA_QUESTIONS
-        filtered = [q for q in self.TRIVIA_QUESTIONS if q.get("topic") == topic]
-        return filtered if filtered else self.TRIVIA_QUESTIONS
+        diff = self.trivia_diff_combo.currentText().lower()
+        pool = self.TRIVIA_QUESTIONS
+        if topic and "All Topics" not in topic:
+            pool = [q for q in pool if q.get("topic") == topic]
+        if "easy" in diff:
+            filtered = [q for q in pool if q.get("difficulty") == "easy"]
+            if filtered: pool = filtered
+        elif "medium" in diff:
+            filtered = [q for q in pool if q.get("difficulty") == "medium"]
+            if filtered: pool = filtered
+        elif "hard" in diff:
+            filtered = [q for q in pool if q.get("difficulty") == "hard"]
+            if filtered: pool = filtered
+        return pool if pool else self.TRIVIA_QUESTIONS
+
+    def _toggle_trivia_auto_next(self):
+        active = self.trivia_auto_next_btn.isChecked()
+        if active:
+            self.trivia_auto_next_btn.setText("⚡ Auto: ON")
+            self.trivia_auto_next_btn.setStyleSheet("border-radius: 6px; padding: 5px 7px; font-size: 11px; background: #065f46; color: white;")
+        else:
+            self.trivia_auto_next_btn.setText("⚡ Auto: OFF")
+            self.trivia_auto_next_btn.setStyleSheet("border-radius: 6px; padding: 5px 7px; font-size: 11px;")
+
+    def _auto_advance_trivia(self):
+        """Automatically advances to next question or generates new AI trivia."""
+        if not self.trivia_answered:
+            return
+        if hasattr(self, "_last_was_ai") and self._last_was_ai:
+            self._generate_ai_trivia_question()
+        else:
+            self._next_trivia_question()
 
     def _load_trivia_question(self, idx: int):
         pool = self._get_filtered_questions()
@@ -911,16 +976,22 @@ class GamesWindow(QWidget):
             self.trivia_streak_lbl.setText(f"🔥 Streak: 0")
             self.trivia_explain_lbl.setText(f"❌ Not quite. {q['explanation']}")
 
+        # Auto-Next Loop: advance to next question smoothly after 2.2 seconds
+        if hasattr(self, "trivia_auto_next_btn") and self.trivia_auto_next_btn.isChecked() and not self.trivia_self_play_active:
+            QTimer.singleShot(2200, self._auto_advance_trivia)
+
     def _next_trivia_question(self):
         self._load_trivia_question(self.curr_trivia_idx + 1)
 
     def _generate_ai_trivia_question(self):
-        """Asynchronously requests a live trivia question from AI."""
+        """Asynchronously requests a live trivia question from AI with custom difficulty."""
+        self._last_was_ai = True
         self.trivia_ai_gen_btn.setEnabled(False)
         self.trivia_ai_gen_btn.setText("✨ AI Generating...")
         topic = self.trivia_topic_combo.currentText()
         if "All Topics" in topic:
-            topic = random.choice(["Space", "Quantum Physics", "Computer Science", "Ancient History", "World Geography", "Artificial Intelligence"])
+            topic = random.choice(["Space & Astronomy", "Quantum Science", "Computer Science & Gaming", "Ancient History & Myths", "World Geography", "Artificial Intelligence"])
+        diff = self.trivia_diff_combo.currentText() if hasattr(self, "trivia_diff_combo") else "Medium"
 
         class Worker(QThread):
             ready = Signal(dict)
@@ -931,9 +1002,14 @@ class GamesWindow(QWidget):
                     from core.ai_manager import get_ai_manager
                     ai = get_ai_manager()
                     p = (
-                        f"Generate 1 unique, fun multiple choice trivia question on topic '{topic}'. "
-                        f"Format as single raw JSON without markdown: "
-                        f'{{"topic": "{topic}", "q": "question?", "options": ["A", "B", "C", "D"], "correct": 0, "explanation": "why A is right"}}'
+                        f"Generate 1 high-quality, entertaining, and educational multiple choice trivia question on topic '{topic}' at difficulty '{diff}'. "
+                        f"Requirements:\n"
+                        f"- If Easy: Fun pop culture, superheroes, gaming, basic geography, or delightful facts anyone can answer.\n"
+                        f"- If Medium: Intriguing historical events, inventions, world landmarks, or space milestones.\n"
+                        f"- If Hard: Advanced science, algorithms, theoretical physics, or deep history.\n"
+                        f"Provide 4 distinct plausible options, 0-based index of correct option, and a 1-sentence witty explanation.\n"
+                        f"Format as single raw JSON without markdown:\n"
+                        f'{{"topic": "{topic}", "difficulty": "{diff}", "q": "question?", "options": ["A", "B", "C", "D"], "correct": 0, "explanation": "why A is right"}}'
                     )
                     res = ai.generate_chat([{"role": "user", "content": p}], persona="companion")
                     m = re.search(r"\{.*\}", res, re.DOTALL)
@@ -982,6 +1058,417 @@ class GamesWindow(QWidget):
         choice = q["correct"] if random.random() < 0.88 else random.randint(0, 3)
         self._on_trivia_answer(choice)
         QTimer.singleShot(2500, self._next_trivia_question)
+
+    # -------------------------------------------------------------
+    # 4. 2D Chess Game (Player vs AI & Bot vs Bot Self-Play)
+    # -------------------------------------------------------------
+    CHESS_SYMBOLS = {
+        'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
+        'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟',
+        '.': ''
+    }
+    CHESS_VALUES = {
+        'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 20000,
+        'P': 100, 'N': 320, 'B': 330, 'R': 500, 'Q': 900, 'K': 20000
+    }
+
+    def _build_chess_tab(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setSpacing(8)
+
+        # Controls Bar
+        top_bar = QHBoxLayout()
+        self.chess_status_lbl = QLabel("White's Turn (Your Move)")
+        self.chess_status_lbl.setFont(QFont("Segoe UI", 11, QFont.Weight.DemiBold))
+        self.chess_status_lbl.setStyleSheet("color: #38bdf8;")
+        top_bar.addWidget(self.chess_status_lbl)
+
+        top_bar.addStretch()
+
+        self.chess_diff_combo = QComboBox()
+        self.chess_diff_combo.addItems(["Casual", "Tactical", "Master"])
+        self.chess_diff_combo.setStyleSheet("""
+            QComboBox {
+                background: #1e293b;
+                color: #38bdf8;
+                border: 1px solid #334155;
+                border-radius: 6px;
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+        """)
+        top_bar.addWidget(self.chess_diff_combo)
+
+        self.chess_self_play_btn = QPushButton("🤖 Bot vs Bot: OFF")
+        self.chess_self_play_btn.setCheckable(True)
+        self.chess_self_play_btn.setStyleSheet("border-radius: 6px; padding: 5px 8px; font-size: 11px;")
+        self.chess_self_play_btn.clicked.connect(self._toggle_chess_self_play)
+        top_bar.addWidget(self.chess_self_play_btn)
+
+        reset_btn = QPushButton("🔄 New Game")
+        reset_btn.setStyleSheet("border-radius: 6px; padding: 5px 8px; font-size: 11px;")
+        reset_btn.clicked.connect(self._reset_chess)
+        top_bar.addWidget(reset_btn)
+        layout.addLayout(top_bar)
+
+        # 8x8 Chess Board Grid
+        board_frame = QFrame()
+        board_frame.setStyleSheet("background: #090d16; border: 2px solid #1e293b; border-radius: 10px; padding: 6px;")
+        board_layout = QGridLayout(board_frame)
+        board_layout.setSpacing(2)
+
+        self.chess_buttons: List[List[QPushButton]] = []
+        for r in range(8):
+            row_btns = []
+            for c in range(8):
+                btn = QPushButton("")
+                btn.setFixedSize(48, 48)
+                btn.setFont(QFont("Segoe UI Symbol", 22))
+                btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+                btn.clicked.connect(lambda _, row=r, col=c: self._on_chess_square_clicked(row, col))
+                board_layout.addWidget(btn, r, c)
+                row_btns.append(btn)
+            self.chess_buttons.append(row_btns)
+        layout.addWidget(board_frame, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        # Meta info bar: Captured pieces & move history
+        info_layout = QHBoxLayout()
+        self.chess_captured_lbl = QLabel("Captured: None")
+        self.chess_captured_lbl.setStyleSheet("color: #94a3b8; font-size: 11px;")
+        info_layout.addWidget(self.chess_captured_lbl)
+
+        info_layout.addStretch()
+
+        self.chess_history_lbl = QLabel("Move: 0")
+        self.chess_history_lbl.setStyleSheet("color: #38bdf8; font-size: 11px; font-weight: bold;")
+        info_layout.addWidget(self.chess_history_lbl)
+        layout.addLayout(info_layout)
+
+        # Initialize Game State
+        self.chess_board: List[List[str]] = []
+        self.chess_turn = 'W'
+        self.chess_selected: Optional[Tuple[int, int]] = None
+        self.chess_legal_destinations: List[Tuple[int, int]] = []
+        self.chess_self_play_active = False
+        self.chess_game_over = False
+        self.chess_move_count = 0
+        self.chess_captured_white: List[str] = []
+        self.chess_captured_black: List[str] = []
+
+        self._reset_chess()
+        return widget
+
+    def _reset_chess(self):
+        """Initializes standard 8x8 chess board setup."""
+        self.chess_board = [
+            ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+            ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+            ['.', '.', '.', '.', '.', '.', '.', '.'],
+            ['.', '.', '.', '.', '.', '.', '.', '.'],
+            ['.', '.', '.', '.', '.', '.', '.', '.'],
+            ['.', '.', '.', '.', '.', '.', '.', '.'],
+            ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+            ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+        ]
+        self.chess_turn = 'W'
+        self.chess_selected = None
+        self.chess_legal_destinations = []
+        self.chess_game_over = False
+        self.chess_move_count = 0
+        self.chess_captured_white = []
+        self.chess_captured_black = []
+        self.chess_status_lbl.setText("White's Turn (Your Move)")
+        self.chess_status_lbl.setStyleSheet("color: #38bdf8;")
+        self.chess_captured_lbl.setText("Captured: None")
+        self.chess_history_lbl.setText("Move: 0")
+        self._render_chess_board()
+
+        if self.chess_self_play_active:
+            QTimer.singleShot(600, self._chess_ai_move)
+
+    def _render_chess_board(self):
+        """Refreshes square colors, piece glyphs, and active move highlights."""
+        for r in range(8):
+            for c in range(8):
+                piece = self.chess_board[r][c]
+                symbol = self.CHESS_SYMBOLS.get(piece, "")
+                btn = self.chess_buttons[r][c]
+                btn.setText(symbol)
+
+                # Alternating board squares
+                is_light = (r + c) % 2 == 0
+                bg = "#334155" if is_light else "#1e293b"
+                border = "#475569" if is_light else "#334155"
+
+                # Text color: White pieces vs Black pieces
+                if piece.isupper():
+                    text_color = "#f8fafc"
+                elif piece.islower():
+                    text_color = "#38bdf8"
+                else:
+                    text_color = "transparent"
+
+                # Selected square highlight
+                if self.chess_selected == (r, c):
+                    bg = "#0369a1"
+                    border = "#38bdf8"
+                # Legal destination highlight
+                elif (r, c) in self.chess_legal_destinations:
+                    bg = "#065f46"
+                    border = "#10b981"
+
+                btn.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {bg};
+                        color: {text_color};
+                        border: 1px solid {border};
+                        border-radius: 4px;
+                    }}
+                    QPushButton:hover {{
+                        border-color: #38bdf8;
+                    }}
+                """)
+
+    def _on_chess_square_clicked(self, r: int, c: int):
+        if self.chess_game_over or (self.chess_turn == 'B' and not self.chess_self_play_active):
+            return
+
+        # If already selected, check if clicked a valid destination
+        if self.chess_selected:
+            sel_r, sel_c = self.chess_selected
+            if (r, c) in self.chess_legal_destinations:
+                self._execute_chess_move(sel_r, sel_c, r, c)
+                return
+            elif self.chess_board[r][c] != '.' and self._is_own_piece(self.chess_board[r][c], self.chess_turn):
+                # Switch selection to another own piece
+                self.chess_selected = (r, c)
+                self.chess_legal_destinations = self._get_legal_chess_moves(r, c, self.chess_board)
+                self._render_chess_board()
+                return
+            else:
+                # Deselect
+                self.chess_selected = None
+                self.chess_legal_destinations = []
+                self._render_chess_board()
+                return
+
+        # Selecting a piece
+        piece = self.chess_board[r][c]
+        if piece != '.' and self._is_own_piece(piece, self.chess_turn):
+            self.chess_selected = (r, c)
+            self.chess_legal_destinations = self._get_legal_chess_moves(r, c, self.chess_board)
+            self._render_chess_board()
+
+    def _is_own_piece(self, piece: str, turn: str) -> bool:
+        if piece == '.':
+            return False
+        return (turn == 'W' and piece.isupper()) or (turn == 'B' and piece.islower())
+
+    def _get_legal_chess_moves(self, r: int, c: int, board: List[List[str]]) -> List[Tuple[int, int]]:
+        piece = board[r][c]
+        if piece == '.':
+            return []
+
+        moves = []
+        is_white = piece.isupper()
+
+        # 1. Pawns
+        if piece in ('P', 'p'):
+            fwd = -1 if is_white else 1
+            start_row = 6 if is_white else 1
+            # 1 step forward
+            if 0 <= r + fwd < 8 and board[r + fwd][c] == '.':
+                moves.append((r + fwd, c))
+                # 2 steps forward from start
+                if r == start_row and board[r + 2 * fwd][c] == '.':
+                    moves.append((r + 2 * fwd, c))
+            # Diagonal captures
+            for dc in (-1, 1):
+                tr, tc = r + fwd, c + dc
+                if 0 <= tr < 8 and 0 <= tc < 8:
+                    target = board[tr][tc]
+                    if target != '.' and (target.islower() if is_white else target.isupper()):
+                        moves.append((tr, tc))
+
+        # 2. Knights
+        elif piece in ('N', 'n'):
+            jumps = [(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)]
+            for dr, dc in jumps:
+                tr, tc = r + dr, c + dc
+                if 0 <= tr < 8 and 0 <= tc < 8:
+                    target = board[tr][tc]
+                    if target == '.' or (target.islower() if is_white else target.isupper()):
+                        moves.append((tr, tc))
+
+        # 3. Bishops
+        elif piece in ('B', 'b'):
+            directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+            moves.extend(self._ray_moves(r, c, directions, is_white, board))
+
+        # 4. Rooks
+        elif piece in ('R', 'r'):
+            directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+            moves.extend(self._ray_moves(r, c, directions, is_white, board))
+
+        # 5. Queens
+        elif piece in ('Q', 'q'):
+            directions = [(-1, -1), (-1, 1), (1, -1), (1, 1), (-1, 0), (1, 0), (0, -1), (0, 1)]
+            moves.extend(self._ray_moves(r, c, directions, is_white, board))
+
+        # 6. Kings
+        elif piece in ('K', 'k'):
+            for dr in (-1, 0, 1):
+                for dc in (-1, 0, 1):
+                    if dr == 0 and dc == 0:
+                        continue
+                    tr, tc = r + dr, c + dc
+                    if 0 <= tr < 8 and 0 <= tc < 8:
+                        target = board[tr][tc]
+                        if target == '.' or (target.islower() if is_white else target.isupper()):
+                            moves.append((tr, tc))
+
+        return moves
+
+    def _ray_moves(self, r: int, c: int, directions: List[Tuple[int, int]], is_white: bool, board: List[List[str]]) -> List[Tuple[int, int]]:
+        res = []
+        for dr, dc in directions:
+            tr, tc = r + dr, c + dc
+            while 0 <= tr < 8 and 0 <= tc < 8:
+                target = board[tr][tc]
+                if target == '.':
+                    res.append((tr, tc))
+                elif target.islower() if is_white else target.isupper():
+                    res.append((tr, tc))
+                    break
+                else:
+                    break
+                tr += dr
+                tc += dc
+        return res
+
+    def _execute_chess_move(self, fr: int, fc: int, tr: int, tc: int):
+        piece = self.chess_board[fr][fc]
+        target = self.chess_board[tr][tc]
+
+        # Check for capture
+        if target != '.':
+            if target.isupper():
+                self.chess_captured_white.append(self.CHESS_SYMBOLS.get(target, target))
+            else:
+                self.chess_captured_black.append(self.CHESS_SYMBOLS.get(target, target))
+
+            if target.lower() == 'k':
+                # King captured -> Instant victory!
+                winner = "White" if self.chess_turn == 'W' else "Black"
+                self.chess_game_over = True
+                self.chess_status_lbl.setText(f"🏆 {winner} Wins by King Capture!")
+                self.chess_status_lbl.setStyleSheet("color: #10b981; font-weight: bold;")
+                self._award_xp(100, f"Chess Victory ({winner})")
+
+        # Move piece
+        self.chess_board[fr][fc] = '.'
+        # Pawn promotion to Queen on back rank
+        if piece == 'P' and tr == 0:
+            self.chess_board[tr][tc] = 'Q'
+        elif piece == 'p' and tr == 7:
+            self.chess_board[tr][tc] = 'q'
+        else:
+            self.chess_board[tr][tc] = piece
+
+        self.chess_move_count += 1
+        self.chess_selected = None
+        self.chess_legal_destinations = []
+
+        # Update labels
+        w_caps = "".join(self.chess_captured_black)
+        b_caps = "".join(self.chess_captured_white)
+        self.chess_captured_lbl.setText(f"White Cap: {w_caps or 'None'} | Black Cap: {b_caps or 'None'}")
+        self.chess_history_lbl.setText(f"Move: {self.chess_move_count}")
+
+        if not self.chess_game_over:
+            # Switch turn
+            self.chess_turn = 'B' if self.chess_turn == 'W' else 'W'
+            if self.chess_turn == 'B':
+                self.chess_status_lbl.setText("Black AI Thinking... 🧠")
+                self.chess_status_lbl.setStyleSheet("color: #f59e0b;")
+                QTimer.singleShot(600, self._chess_ai_move)
+            else:
+                self.chess_status_lbl.setText("White's Turn (Your Move)")
+                self.chess_status_lbl.setStyleSheet("color: #38bdf8;")
+                if self.chess_self_play_active:
+                    QTimer.singleShot(600, self._chess_ai_move)
+
+        self._render_chess_board()
+
+    def _chess_ai_move(self):
+        if self.chess_game_over:
+            return
+        diff = self.chess_diff_combo.currentText().lower()
+        best_move = self._pick_best_chess_move(self.chess_board, self.chess_turn, diff)
+        if best_move:
+            (fr, fc), (tr, tc) = best_move
+            self._execute_chess_move(fr, fc, tr, tc)
+        else:
+            # No moves remaining -> Stalemate or defeat
+            winner = "White" if self.chess_turn == 'B' else "Black"
+            self.chess_game_over = True
+            self.chess_status_lbl.setText(f"🏁 Game Over! {winner} Wins!")
+            self.chess_status_lbl.setStyleSheet("color: #10b981; font-weight: bold;")
+            self._award_xp(60, "Chess Finished")
+
+    def _pick_best_chess_move(self, board: List[List[str]], color: str, difficulty: str) -> Optional[Tuple[Tuple[int, int], Tuple[int, int]]]:
+        all_moves = []
+        is_white = (color == 'W')
+        for r in range(8):
+            for c in range(8):
+                piece = board[r][c]
+                if piece != '.' and (piece.isupper() if is_white else piece.islower()):
+                    destinations = self._get_legal_chess_moves(r, c, board)
+                    for tr, tc in destinations:
+                        all_moves.append(((r, c), (tr, tc)))
+
+        if not all_moves:
+            return None
+
+        if difficulty == "casual":
+            # 65% prioritize captures, otherwise random move
+            captures = [m for m in all_moves if board[m[1][0]][m[1][1]] != '.']
+            if captures and random.random() < 0.65:
+                return random.choice(captures)
+            return random.choice(all_moves)
+
+        # Tactical & Master: Score moves based on capture value and center proximity
+        best_score = -999999
+        best_move = random.choice(all_moves)
+
+        for (fr, fc), (tr, tc) in all_moves:
+            target = board[tr][tc]
+            score = 0
+            if target != '.':
+                score += self.CHESS_VALUES.get(target, 0) * 10
+            # Center control bonus (squares 3,3 to 4,4)
+            if 2 <= tr <= 5 and 2 <= tc <= 5:
+                score += 15
+            # Small random tiebreaker
+            score += random.randint(0, 5)
+
+            if score > best_score:
+                best_score = score
+                best_move = ((fr, fc), (tr, tc))
+
+        return best_move
+
+    def _toggle_chess_self_play(self):
+        self.chess_self_play_active = self.chess_self_play_btn.isChecked()
+        if self.chess_self_play_active:
+            self.chess_self_play_btn.setText("🤖 Bot vs Bot: ON")
+            self.chess_self_play_btn.setStyleSheet("background: #0284c7; color: white;")
+            if not self.chess_game_over:
+                QTimer.singleShot(500, self._chess_ai_move)
+        else:
+            self.chess_self_play_btn.setText("🤖 Bot vs Bot: OFF")
+            self.chess_self_play_btn.setStyleSheet("")
 
     def _award_xp(self, amount: int, reason: str):
         self.xp_badge.setText(f"✨ +{amount} XP ({reason})")

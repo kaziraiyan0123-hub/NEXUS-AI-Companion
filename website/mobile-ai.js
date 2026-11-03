@@ -148,7 +148,7 @@ window.NexusMobileAI = (function () {
     async function tryGemini() {
       const geminiKey = localStorage.getItem("nexus_gemini_key") || DEFAULT_GEMINI_KEY;
       if (!geminiKey) return null;
-      const geminiModels = ["gemini-4-argon", "gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-latest"];
+      const geminiModels = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-4-argon"];
       for (const model of geminiModels) {
         try {
           const contents = [];

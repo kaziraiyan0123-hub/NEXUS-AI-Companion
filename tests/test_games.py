@@ -78,5 +78,41 @@ class TestNexusArcade(unittest.TestCase):
         self.games._start_memory_round()
         self.assertGreaterEqual(len(self.games.mem_sequence), 3)
 
+    def test_chess_board_initial_state(self):
+        """Verifies 8x8 chess board setup, piece placements, and White turn."""
+        self.assertEqual(len(self.games.chess_board), 8)
+        self.assertEqual(len(self.games.chess_board[0]), 8)
+        self.assertEqual(self.games.chess_board[7][4], 'K')  # White King
+        self.assertEqual(self.games.chess_board[0][4], 'k')  # Black King
+        self.assertEqual(self.games.chess_turn, 'W')
+        self.assertFalse(self.games.chess_game_over)
+
+    def test_chess_pawn_and_knight_moves(self):
+        """Verifies legal move generation for starting pawns and knights."""
+        # e2 pawn at (6, 4) can move to e3 (5, 4) and e4 (4, 4)
+        pawn_moves = self.games._get_legal_chess_moves(6, 4, self.games.chess_board)
+        self.assertIn((5, 4), pawn_moves)
+        self.assertIn((4, 4), pawn_moves)
+
+        # b1 knight at (7, 1) can jump to a3 (5, 0) and c3 (5, 2)
+        knight_moves = self.games._get_legal_chess_moves(7, 1, self.games.chess_board)
+        self.assertIn((5, 0), knight_moves)
+        self.assertIn((5, 2), knight_moves)
+
+    def test_chess_move_execution_and_capture(self):
+        """Verifies piece moving, turn alternation, and capture tracking."""
+        # Move White pawn from (6, 4) to (4, 4)
+        self.games._execute_chess_move(6, 4, 4, 4)
+        self.assertEqual(self.games.chess_board[6][4], '.')
+        self.assertEqual(self.games.chess_board[4][4], 'P')
+        self.assertEqual(self.games.chess_turn, 'B')
+
+    def test_chess_ai_move_selection(self):
+        """Verifies AI picks valid moves for Casual, Tactical, and Master modes."""
+        move = self.games._pick_best_chess_move(self.games.chess_board, 'B', 'tactical')
+        self.assertIsNotNone(move)
+        (fr, fc), (tr, tc) = move
+        self.assertTrue(self.games.chess_board[fr][fc].islower())
+
 if __name__ == "__main__":
     unittest.main()

@@ -16,11 +16,11 @@ class GeminiProvider(BaseAIProvider):
     """Google Gemini AI Provider."""
 
     MODELS = [
-        "gemini-4-argon",
-        "gemini-3.8-flash",
         "gemini-3.5-flash",
-        "gemini-3.5-flash-lite",
-        "gemini-flash-latest"
+        "gemini-3.6-flash",
+        "gemini-3.1-flash-lite",
+        "gemini-3.8-flash",
+        "gemini-4-argon"
     ]
 
     def __init__(self, api_key: Optional[str] = None):
@@ -33,11 +33,11 @@ class GeminiProvider(BaseAIProvider):
 
     @property
     def display_name(self) -> str:
-        return "Google Gemini (Gemini 4 Argon & 3.8 Flash)"
+        return "Google Gemini (Gemini 3.5 & 3.8 Flash Multimodal Vision)"
 
     @property
     def default_model(self) -> str:
-        return "gemini-4-argon"
+        return "gemini-3.5-flash"
 
     @property
     def available_models(self) -> List[str]:
@@ -50,15 +50,30 @@ class GeminiProvider(BaseAIProvider):
         temperature: float,
         max_tokens: int
     ) -> Dict[str, Any]:
-        """Formats conversation messages into Gemini API content payload."""
+        """Formats conversation messages into Gemini API content payload with multimodal vision support."""
         contents = []
         for msg in messages:
             role = "user" if msg.get("role") == "user" else "model"
+            parts = []
             text = msg.get("content", "")
             if text:
+                parts.append({"text": text})
+
+            # Multimodal Vision (image base64 inline data)
+            img_data = msg.get("image_data") or msg.get("b64") or msg.get("inline_data")
+            mime = msg.get("mime_type", "image/jpeg")
+            if img_data:
+                parts.append({
+                    "inline_data": {
+                        "mime_type": mime,
+                        "data": img_data
+                    }
+                })
+
+            if parts:
                 contents.append({
                     "role": role,
-                    "parts": [{"text": text}]
+                    "parts": parts
                 })
 
         payload: Dict[str, Any] = {

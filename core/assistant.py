@@ -520,6 +520,12 @@ class NexusAssistant(QObject):
                 enriched_prompt, parsed_meta = DocumentProcessor.build_prompt_with_attachments(prompt, attachments)
                 if messages:
                     messages[-1]["content"] = enriched_prompt
+                    # Inject base64 image data for Multimodal Vision if an image was attached
+                    for meta in parsed_meta:
+                        if meta.get("base64"):
+                            messages[-1]["image_data"] = meta.get("base64")
+                            messages[-1]["mime_type"] = meta.get("mime_type", "image/jpeg")
+                            break
 
                 # Animate reading / studying state on desktop pet
                 file_names = ", ".join([os.path.basename(a) for a in attachments])

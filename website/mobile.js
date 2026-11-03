@@ -235,10 +235,26 @@
   const gameTabTtt = document.getElementById('gameTabTtt');
   const gameTabMem = document.getElementById('gameTabMem');
   const gameTabTrivia = document.getElementById('gameTabTrivia');
+  const gameTabChess = document.getElementById('gameTabChess');
   const gameTttSection = document.getElementById('gameTttSection');
   const gameMemSection = document.getElementById('gameMemSection');
   const gameTriviaSection = document.getElementById('gameTriviaSection');
+  const gameChessSection = document.getElementById('gameChessSection');
   const botSelfPlayToggle = document.getElementById('botSelfPlayToggle');
+
+  // Chess DOM
+  const chessStatus = document.getElementById('chessStatus');
+  const chessMoveCount = document.getElementById('chessMoveCount');
+  const chessResetBtn = document.getElementById('chessResetBtn');
+  const chessGrid = document.getElementById('chessGrid');
+  const chessCapturedWhite = document.getElementById('chessCapturedWhite');
+  const chessCapturedBlack = document.getElementById('chessCapturedBlack');
+  const chessDialogue = document.getElementById('chessDialogue');
+  const chessDiffPills = document.querySelectorAll('.chess-diff-pill');
+
+  // Trivia Controls DOM
+  const triviaDifficultySelect = document.getElementById('triviaDifficultySelect');
+  const triviaAutoNextBtn = document.getElementById('triviaAutoNextBtn');
 
   // Tic-Tac-Toe Scoreboard & Difficulty DOM
   const scorePlayerEl = document.getElementById('scorePlayer');
@@ -398,16 +414,116 @@
     }
   }
 
+  function extractSpokenHighlight(text) {
+    if (!text) return "";
+    const raw = text.trim();
+
+    // 1. Deterministic creator response
+    if (/who (made|coded|created|built) you|who is your (creator|maker)/i.test(raw)) {
+      return "Raiyan coded me! I am NEXUS, your personal autonomous AI companion.";
+    }
+
+    const hasCode = raw.includes("```");
+
+    // 2. Clean markdown, links, bullets, bold
+    let cleaned = raw
+      .replace(/```[\s\S]*?```/g, "")
+      .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
+      .replace(/https?:\/\/\S+/g, "")
+      .replace(/[\*#_`~>|•]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    // 3. Split into sentences
+    const sentences = cleaned.match(/[^.!?]+[.!?]+/g) || [cleaned];
+    const cleanSentences = sentences.map(s => s.trim()).filter(s => s.length > 0);
+
+    if (hasCode) {
+      if (cleanSentences.length > 0) {
+        const lead = cleanSentences[0];
+        if (lead.length < 120 && !lead.endsWith(":")) {
+          return `${lead} I've placed the code snippet in your chat.`;
+        }
+      }
+      return "Here is the solution to your request. The code snippet is in your chat.";
+    }
+
+    // Extract strictly the first 1-2 punchy sentences (max 150 chars)
+    if (cleanSentences.length > 1) {
+      let highlight = `${cleanSentences[0]} ${cleanSentences[1]}`.trim();
+      if (highlight.length > 150) {
+        highlight = cleanSentences[0];
+      }
+      if (highlight.length > 160) {
+        highlight = highlight.substring(0, 157) + "...";
+      }
+      return highlight;
+    }
+
+    if (cleanSentences.length === 1) {
+      let highlight = cleanSentences[0];
+      return highlight.length > 160 ? highlight.substring(0, 157) + "..." : highlight;
+    }
+
+    return raw.substring(0, 120);
+  }
+
+  let cachedNaturalMaleVoice = null;
+  function getBestNaturalMaleVoice() {
+    if (cachedNaturalMaleVoice) return cachedNaturalMaleVoice;
+    if (!window.speechSynthesis) return null;
+    const voices = window.speechSynthesis.getVoices() || [];
+    if (!voices.length) return null;
+
+    // Highest quality male voices on Edge, Windows, Android Chrome, and iOS
+    const malePatterns = [
+      /andrew.*natural/i,
+      /guy.*natural/i,
+      /brian.*natural/i,
+      /david/i,
+      /google.*us.*english.*male/i,
+      /google.*english.*male/i,
+      /daniel/i,
+      /oliver/i,
+      /aaron/i,
+      /george/i,
+      /male/i
+    ];
+
+    for (const pat of malePatterns) {
+      const match = voices.find(v => pat.test(v.name) && (v.lang.startsWith("en") || !v.lang));
+      if (match) {
+        cachedNaturalMaleVoice = match;
+        return match;
+      }
+    }
+
+    const enVoice = voices.find(v => v.lang && v.lang.startsWith("en"));
+    cachedNaturalMaleVoice = enVoice || voices[0];
+    return cachedNaturalMaleVoice;
+  }
+
+  if (window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      cachedNaturalMaleVoice = null;
+      getBestNaturalMaleVoice();
+    };
+  }
+
   function speakText(text) {
     if (!voiceEnabled || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
 
-    const clean = text.replace(/[*_#`[\]()]/g, '').trim();
-    if (!clean) return;
+    const spoken = extractSpokenHighlight(text);
+    if (!spoken) return;
 
-    const utter = new SpeechSynthesisUtterance(clean);
-    utter.rate = 1.05;
-    utter.pitch = 1.0;
+    const utter = new SpeechSynthesisUtterance(spoken);
+    const maleVoice = getBestNaturalMaleVoice();
+    if (maleVoice) {
+      utter.voice = maleVoice;
+    }
+    utter.rate = 1.02;
+    utter.pitch = 0.94; // Warm, natural masculine frequency
 
     speechWave.style.display = 'flex';
     utter.onend = () => { speechWave.style.display = 'none'; };
@@ -1029,6 +1145,24 @@
 
 
   // --- 7. Multi-Format Document, Slide & Spreadsheet Extractors ---
+  function findNodesByLocalName(root, name) {
+    if (!root) return [];
+    try {
+      const ns = root.getElementsByTagNameNS("*", name);
+      if (ns && ns.length) return Array.from(ns);
+    } catch (e) {}
+    const res = [];
+    const all = root.getElementsByTagName("*");
+    const target = name.toLowerCase();
+    for (let i = 0; i < all.length; i++) {
+      const n = all[i].localName || all[i].nodeName || "";
+      if (n.toLowerCase() === target || n.toLowerCase().endsWith(":" + target)) {
+        res.push(all[i]);
+      }
+    }
+    return res;
+  }
+
   async function parseDocx(file) {
     if (typeof JSZip === 'undefined') throw new Error("JSZip not available");
     const zip = await JSZip.loadAsync(file);
@@ -1037,16 +1171,13 @@
     const docXml = await docFile.async("string");
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(docXml, "text/xml");
-    const paragraphs = xmlDoc.getElementsByTagName("w:p");
+    const paragraphs = findNodesByLocalName(xmlDoc, "p");
     let textOut = [];
     for (let i = 0; i < paragraphs.length; i++) {
       const p = paragraphs[i];
-      let pText = "";
-      const textNodes = p.getElementsByTagName("w:t");
-      for (let j = 0; j < textNodes.length; j++) {
-        pText += textNodes[j].textContent;
-      }
-      if (pText.trim()) textOut.push(pText.trim());
+      const textNodes = findNodesByLocalName(p, "t");
+      const pText = textNodes.map(t => t.textContent).join("").trim();
+      if (pText) textOut.push(pText);
     }
     return textOut.join("\n\n");
   }
@@ -1056,27 +1187,37 @@
     const zip = await JSZip.loadAsync(file);
     const parser = new DOMParser();
     let slidesText = [];
-    let slideIdx = 1;
-    while (true) {
-      const slideFile = zip.file(`ppt/slides/slide${slideIdx}.xml`);
-      if (!slideFile) break;
+
+    // Find all slide XML files in ppt/slides/
+    const slideFileNames = [];
+    zip.forEach((relPath) => {
+      if (/^ppt\/slides\/slide\d+\.xml$/i.test(relPath)) {
+        slideFileNames.push(relPath);
+      }
+    });
+
+    slideFileNames.sort((a, b) => {
+      const numA = parseInt(a.replace(/\D/g, ""), 10) || 0;
+      const numB = parseInt(b.replace(/\D/g, ""), 10) || 0;
+      return numA - numB;
+    });
+
+    for (let idx = 0; idx < slideFileNames.length; idx++) {
+      const sName = slideFileNames[idx];
+      const slideFile = zip.file(sName);
+      if (!slideFile) continue;
       const slideXml = await slideFile.async("string");
       const xmlDoc = parser.parseFromString(slideXml, "text/xml");
-      const paragraphs = xmlDoc.getElementsByTagName("a:p");
+      const paragraphs = findNodesByLocalName(xmlDoc, "p");
       let slideText = [];
       for (let i = 0; i < paragraphs.length; i++) {
-        const p = paragraphs[i];
-        let pText = "";
-        const textNodes = p.getElementsByTagName("a:t");
-        for (let j = 0; j < textNodes.length; j++) {
-          pText += textNodes[j].textContent;
-        }
-        if (pText.trim()) slideText.push(pText.trim());
+        const textNodes = findNodesByLocalName(paragraphs[i], "t");
+        const pText = textNodes.map(t => t.textContent).join("").trim();
+        if (pText) slideText.push(pText);
       }
       if (slideText.length > 0) {
-        slidesText.push(`--- Slide ${slideIdx} ---\n${slideText.join("\n")}`);
+        slidesText.push(`--- Slide ${idx + 1} ---\n${slideText.join("\n")}`);
       }
-      slideIdx++;
     }
     if (slidesText.length === 0) throw new Error("No slide content extracted");
     return slidesText.join("\n\n");
@@ -1462,29 +1603,19 @@
 
   // --- 9. Arcade & Brain Games Suite ---
   // Subtab switching
-  gameTabTtt.addEventListener('click', () => {
-    gameTabTtt.classList.add('active');
-    gameTabMem.classList.remove('active');
-    gameTabTrivia.classList.remove('active');
-    gameTttSection.style.display = 'flex';
-    gameMemSection.style.display = 'none';
-    gameTriviaSection.style.display = 'none';
-  });
-  gameTabMem.addEventListener('click', () => {
-    gameTabMem.classList.add('active');
-    gameTabTtt.classList.remove('active');
-    gameTabTrivia.classList.remove('active');
-    gameMemSection.style.display = 'flex';
-    gameTttSection.style.display = 'none';
-    gameTriviaSection.style.display = 'none';
-  });
-  gameTabTrivia.addEventListener('click', () => {
-    gameTabTrivia.classList.add('active');
-    gameTabTtt.classList.remove('active');
-    gameTabMem.classList.remove('active');
-    gameTriviaSection.style.display = 'flex';
-    gameTttSection.style.display = 'none';
-    gameMemSection.style.display = 'none';
+  function setGameSubtab(activeTab, activeSection) {
+    [gameTabTtt, gameTabMem, gameTabTrivia, gameTabChess].forEach(t => t && t.classList.remove('active'));
+    [gameTttSection, gameMemSection, gameTriviaSection, gameChessSection].forEach(s => s && (s.style.display = 'none'));
+    if (activeTab) activeTab.classList.add('active');
+    if (activeSection) activeSection.style.display = 'flex';
+  }
+
+  if (gameTabTtt) gameTabTtt.addEventListener('click', () => setGameSubtab(gameTabTtt, gameTttSection));
+  if (gameTabMem) gameTabMem.addEventListener('click', () => setGameSubtab(gameTabMem, gameMemSection));
+  if (gameTabTrivia) gameTabTrivia.addEventListener('click', () => setGameSubtab(gameTabTrivia, gameTriviaSection));
+  if (gameTabChess) gameTabChess.addEventListener('click', () => {
+    setGameSubtab(gameTabChess, gameChessSection);
+    renderChessBoard();
   });
 
   // Difficulty pills selector
@@ -1890,6 +2021,8 @@
   ];
 
   let currentTriviaIdx = 0;
+  let triviaAutoNext = true;
+  let lastTriviaWasAi = false;
   const triviaQuestion = document.getElementById('triviaQuestion');
   const triviaOptions = document.getElementById('triviaOptions');
   const triviaExplanation = document.getElementById('triviaExplanation');
@@ -1897,20 +2030,33 @@
   const triviaCategorySelect = document.getElementById('triviaCategorySelect');
   const triviaAiGenBtn = document.getElementById('triviaAiGenBtn');
 
+  if (triviaAutoNextBtn) {
+    triviaAutoNextBtn.addEventListener('click', () => {
+      triviaAutoNext = !triviaAutoNext;
+      triviaAutoNextBtn.textContent = triviaAutoNext ? '⚡ Auto: ON' : '⚡ Auto: OFF';
+      triviaAutoNextBtn.style.background = triviaAutoNext ? '#065f46' : 'rgba(255,255,255,0.08)';
+    });
+  }
+
   function getFilteredTrivia() {
-    if (!triviaCategorySelect || triviaCategorySelect.value === 'all') {
-      return TRIVIA;
+    let pool = TRIVIA;
+    if (triviaCategorySelect && triviaCategorySelect.value !== 'all') {
+      const cat = triviaCategorySelect.value;
+      pool = pool.filter(t => t.cat === cat);
     }
-    const sel = triviaCategorySelect.value;
-    const filtered = TRIVIA.filter(t => t.cat === sel);
-    return filtered.length > 0 ? filtered : TRIVIA;
+    if (triviaDifficultySelect && triviaDifficultySelect.value !== 'all') {
+      const diff = triviaDifficultySelect.value.toLowerCase();
+      const diffPool = pool.filter(t => (t.diff || 'medium').toLowerCase() === diff);
+      if (diffPool.length > 0) pool = diffPool;
+    }
+    return pool.length > 0 ? pool : TRIVIA;
   }
 
   function loadTrivia(idx) {
     const pool = getFilteredTrivia();
     currentTriviaIdx = idx % pool.length;
     const item = pool[currentTriviaIdx];
-    if (triviaCategoryEl) triviaCategoryEl.textContent = item.cat || "Science & Tech";
+    if (triviaCategoryEl) triviaCategoryEl.textContent = `🏷️ ${item.cat || "Science & Tech"}`;
     if (triviaStreakEl) triviaStreakEl.textContent = `🔥 Streak: ${triviaStreak}`;
 
     triviaQuestion.textContent = `Q${currentTriviaIdx + 1}. ${item.q}`;
@@ -1940,55 +2086,402 @@
           triviaExplanation.textContent = `❌ Not quite. ${item.exp}`;
           playTone(280, 'sine', 0.2);
         }
+
+        // Auto-Next loop: smoothly advances to next question after 2.2s
+        if (triviaAutoNext) {
+          setTimeout(() => {
+            if (lastTriviaWasAi) {
+              triggerAiTriviaGen();
+            } else {
+              loadTrivia(currentTriviaIdx + 1);
+            }
+          }, 2200);
+        }
       });
       triviaOptions.appendChild(btn);
     });
   }
 
   if (triviaCategorySelect) {
-    triviaCategorySelect.addEventListener('change', () => {
-      loadTrivia(0);
-    });
+    triviaCategorySelect.addEventListener('change', () => loadTrivia(0));
+  }
+  if (triviaDifficultySelect) {
+    triviaDifficultySelect.addEventListener('change', () => loadTrivia(0));
+  }
+
+  async function triggerAiTriviaGen() {
+    if (!triviaAiGenBtn) return;
+    lastTriviaWasAi = true;
+    triviaAiGenBtn.disabled = true;
+    triviaAiGenBtn.textContent = '✨ Generating...';
+    const cat = triviaCategorySelect ? triviaCategorySelect.value : 'General Knowledge';
+    const diff = triviaDifficultySelect ? triviaDifficultySelect.value : 'medium';
+    const prompt = `Generate 1 unique, fun, high-quality multiple choice trivia question on topic '${cat === 'all' ? 'Science and History' : cat}' at difficulty level '${diff}'. ` +
+      `Requirements: If easy, make it fun and accessible (pop culture, games, animals). If medium, fascinating discoveries. If hard, deep tech or science. ` +
+      `Respond ONLY with a single raw JSON object: {"cat": "${cat === 'all' ? 'Science' : cat}", "diff": "${diff}", "q": "question text", "opts": ["A", "B", "C", "D"], "ans": 0, "exp": "explanation"}. No markdown.`;
+
+    try {
+      const reply = await window.NexusMobileAI.queryAI(prompt, 'academic');
+      const match = reply.match(/\{[\s\S]*\}/);
+      if (match) {
+        const newQ = JSON.parse(match[0]);
+        if (newQ.q && Array.isArray(newQ.opts) && newQ.opts.length === 4 && typeof newQ.ans === 'number') {
+          TRIVIA.push(newQ);
+          loadTrivia(TRIVIA.length - 1);
+          addXP(10, "AI Trivia Discovery");
+          triviaExplanation.textContent = "✨ Fresh AI-generated question loaded! (+10 Discovery XP)";
+          playTone(800, 'sine', 0.15);
+          return;
+        }
+      }
+      loadTrivia(currentTriviaIdx + 1);
+    } catch (e) {
+      console.warn("AI Trivia Gen Error:", e);
+      loadTrivia(currentTriviaIdx + 1);
+    } finally {
+      triviaAiGenBtn.disabled = false;
+      triviaAiGenBtn.textContent = '✨ AI Question';
+    }
   }
 
   if (triviaAiGenBtn) {
-    triviaAiGenBtn.addEventListener('click', async () => {
-      triviaAiGenBtn.disabled = true;
-      triviaAiGenBtn.textContent = '✨ Generating...';
-      const cat = triviaCategorySelect ? triviaCategorySelect.value : 'General Knowledge';
-      const prompt = `Generate 1 unique multiple choice trivia question on topic '${cat === 'all' ? 'Science and Technology' : cat}'. Respond ONLY with a valid raw JSON object with keys: {"cat": "${cat === 'all' ? 'Science' : cat}", "q": "question text", "opts": ["Option 1", "Option 2", "Option 3", "Option 4"], "ans": 0, "exp": "explanation"}. No markdown backticks.`;
-
-      try {
-        const reply = await window.NexusMobileAI.queryAI(prompt, 'academic');
-        const match = reply.match(/\{[\s\S]*\}/);
-        if (match) {
-          const newQ = JSON.parse(match[0]);
-          if (newQ.q && Array.isArray(newQ.opts) && newQ.opts.length === 4 && typeof newQ.ans === 'number') {
-            TRIVIA.push(newQ);
-            loadTrivia(TRIVIA.length - 1);
-            addXP(10, "AI Trivia Discovery");
-            triviaExplanation.textContent = "✨ Fresh AI-generated question loaded! (+10 Discovery XP)";
-            playTone(800, 'sine', 0.15);
-          } else {
-            loadTrivia(currentTriviaIdx + 1);
-          }
-        } else {
-          loadTrivia(currentTriviaIdx + 1);
-        }
-      } catch (e) {
-        console.warn("AI Trivia Gen Error:", e);
-        loadTrivia(currentTriviaIdx + 1);
-      } finally {
-        triviaAiGenBtn.disabled = false;
-        triviaAiGenBtn.textContent = '✨ AI Question';
-      }
-    });
+    triviaAiGenBtn.addEventListener('click', triggerAiTriviaGen);
   }
 
-  triviaNextBtn.addEventListener('click', () => {
-    loadTrivia(currentTriviaIdx + 1);
-  });
+  if (triviaNextBtn) {
+    triviaNextBtn.addEventListener('click', () => {
+      lastTriviaWasAi = false;
+      loadTrivia(currentTriviaIdx + 1);
+    });
+  }
   loadTrivia(0);
+
+  // ========================================================
+  // --- 9B. 2D Chess Mobile Engine (Player vs AI & Bot vs Bot) ---
+  // ========================================================
+  const CHESS_SYMBOLS = {
+    'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
+    'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟',
+    '.': ''
+  };
+  const CHESS_VALS = {
+    'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 20000,
+    'P': 100, 'N': 320, 'B': 330, 'R': 500, 'Q': 900, 'K': 20000
+  };
+
+  let chessBoard = [];
+  let chessTurn = 'W';
+  let chessSelected = null;
+  let chessLegalMoves = [];
+  let chessDifficulty = 'casual';
+  let chessMoveCountNum = 0;
+  let chessGameOver = false;
+  let chessCapsWhite = [];
+  let chessCapsBlack = [];
+
+  // Difficulty pills for chess
+  chessDiffPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      chessDiffPills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      chessDifficulty = pill.dataset.diff || 'casual';
+    });
+  });
+
+  function resetChess() {
+    chessBoard = [
+      ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+      ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+      ['.', '.', '.', '.', '.', '.', '.', '.'],
+      ['.', '.', '.', '.', '.', '.', '.', '.'],
+      ['.', '.', '.', '.', '.', '.', '.', '.'],
+      ['.', '.', '.', '.', '.', '.', '.', '.'],
+      ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+      ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+    ];
+    chessTurn = 'W';
+    chessSelected = null;
+    chessLegalMoves = [];
+    chessGameOver = false;
+    chessMoveCountNum = 0;
+    chessCapsWhite = [];
+    chessCapsBlack = [];
+    if (chessStatus) chessStatus.textContent = "White's Turn (Your Move)";
+    if (chessMoveCount) chessMoveCount.textContent = "Move: 0";
+    if (chessCapturedWhite) chessCapturedWhite.textContent = "White: None";
+    if (chessCapturedBlack) chessCapturedBlack.textContent = "Black: None";
+    renderChessBoard();
+
+    if (botSelfPlayToggle && botSelfPlayToggle.checked) {
+      setTimeout(makeChessAiMove, 800);
+    }
+  }
+
+  function renderChessBoard() {
+    if (!chessGrid) return;
+    chessGrid.innerHTML = '';
+
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const piece = chessBoard[r][c];
+        const cell = document.createElement('div');
+        const isLight = (r + c) % 2 === 0;
+        cell.className = `chess-cell ${isLight ? 'light' : 'dark'}`;
+        if (piece !== '.') {
+          cell.classList.add(piece === piece.toUpperCase() ? 'white-piece' : 'black-piece');
+          cell.textContent = CHESS_SYMBOLS[piece] || piece;
+        }
+
+        if (chessSelected && chessSelected[0] === r && chessSelected[1] === c) {
+          cell.classList.add('selected');
+        } else if (chessLegalMoves.some(m => m[0] === r && m[1] === c)) {
+          cell.classList.add('legal');
+        }
+
+        cell.addEventListener('click', () => onChessCellClick(r, c));
+        chessGrid.appendChild(cell);
+      }
+    }
+  }
+
+  function onChessCellClick(r, c) {
+    if (chessGameOver) return;
+    const isBotSelf = (botSelfPlayToggle && botSelfPlayToggle.checked);
+    if (chessTurn === 'B' && !isBotSelf) return;
+
+    if (chessSelected) {
+      const [selR, selC] = chessSelected;
+      const isLegal = chessLegalMoves.some(m => m[0] === r && m[1] === c);
+      if (isLegal) {
+        executeChessMove(selR, selC, r, c);
+        return;
+      } else if (chessBoard[r][c] !== '.' && isPieceTurn(chessBoard[r][c], chessTurn)) {
+        chessSelected = [r, c];
+        chessLegalMoves = getChessLegalMoves(r, c, chessBoard);
+        renderChessBoard();
+        return;
+      } else {
+        chessSelected = null;
+        chessLegalMoves = [];
+        renderChessBoard();
+        return;
+      }
+    }
+
+    const piece = chessBoard[r][c];
+    if (piece !== '.' && isPieceTurn(piece, chessTurn)) {
+      chessSelected = [r, c];
+      chessLegalMoves = getChessLegalMoves(r, c, chessBoard);
+      renderChessBoard();
+      playTone(440, 'sine', 0.08);
+    }
+  }
+
+  function isPieceTurn(piece, turn) {
+    if (piece === '.') return false;
+    return (turn === 'W' && piece === piece.toUpperCase()) ||
+           (turn === 'B' && piece === piece.toLowerCase());
+  }
+
+  function getChessLegalMoves(r, c, board) {
+    const piece = board[r][c];
+    if (piece === '.') return [];
+    const isWhite = (piece === piece.toUpperCase());
+    const moves = [];
+
+    // Pawns
+    if (piece.toLowerCase() === 'p') {
+      const fwd = isWhite ? -1 : 1;
+      const startRow = isWhite ? 6 : 1;
+      if (r + fwd >= 0 && r + fwd < 8 && board[r + fwd][c] === '.') {
+        moves.push([r + fwd, c]);
+        if (r === startRow && board[r + 2 * fwd][c] === '.') {
+          moves.push([r + 2 * fwd, c]);
+        }
+      }
+      for (const dc of [-1, 1]) {
+        const tr = r + fwd, tc = c + dc;
+        if (tr >= 0 && tr < 8 && tc >= 0 && tc < 8) {
+          const target = board[tr][tc];
+          if (target !== '.' && (isWhite ? target === target.toLowerCase() : target === target.toUpperCase())) {
+            moves.push([tr, tc]);
+          }
+        }
+      }
+    }
+    // Knights
+    else if (piece.toLowerCase() === 'n') {
+      const jumps = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+      for (const [dr, dc] of jumps) {
+        const tr = r + dr, tc = c + dc;
+        if (tr >= 0 && tr < 8 && tc >= 0 && tc < 8) {
+          const target = board[tr][tc];
+          if (target === '.' || (isWhite ? target === target.toLowerCase() : target === target.toUpperCase())) {
+            moves.push([tr, tc]);
+          }
+        }
+      }
+    }
+    // Bishops, Rooks, Queens
+    else if (['b', 'r', 'q'].includes(piece.toLowerCase())) {
+      let dirs = [];
+      if (piece.toLowerCase() === 'b' || piece.toLowerCase() === 'q') {
+        dirs.push([-1,-1],[-1,1],[1,-1],[1,1]);
+      }
+      if (piece.toLowerCase() === 'r' || piece.toLowerCase() === 'q') {
+        dirs.push([-1,0],[1,0],[0,-1],[0,1]);
+      }
+      for (const [dr, dc] of dirs) {
+        let tr = r + dr, tc = c + dc;
+        while (tr >= 0 && tr < 8 && tc >= 0 && tc < 8) {
+          const target = board[tr][tc];
+          if (target === '.') {
+            moves.push([tr, tc]);
+          } else if (isWhite ? target === target.toLowerCase() : target === target.toUpperCase()) {
+            moves.push([tr, tc]);
+            break;
+          } else {
+            break;
+          }
+          tr += dr;
+          tc += dc;
+        }
+      }
+    }
+    // King
+    else if (piece.toLowerCase() === 'k') {
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const tr = r + dr, tc = c + dc;
+          if (tr >= 0 && tr < 8 && tc >= 0 && tc < 8) {
+            const target = board[tr][tc];
+            if (target === '.' || (isWhite ? target === target.toLowerCase() : target === target.toUpperCase())) {
+              moves.push([tr, tc]);
+            }
+          }
+        }
+      }
+    }
+    return moves;
+  }
+
+  function executeChessMove(fr, fc, tr, tc) {
+    const piece = chessBoard[fr][fc];
+    const target = chessBoard[tr][tc];
+
+    if (target !== '.') {
+      if (target === target.toUpperCase()) {
+        chessCapsWhite.push(CHESS_SYMBOLS[target] || target);
+      } else {
+        chessCapsBlack.push(CHESS_SYMBOLS[target] || target);
+      }
+
+      if (target.toLowerCase() === 'k') {
+        const winner = (chessTurn === 'W') ? "White" : "Black";
+        chessGameOver = true;
+        chessStatus.textContent = `🏆 ${winner} Wins by King Capture!`;
+        addXP(100, `Chess Victory (${winner})`);
+        spawnBurst('star', 25);
+        playTone(980, 'triangle', 0.3);
+      } else {
+        playTone(520, 'square', 0.12);
+      }
+    } else {
+      playTone(330, 'sine', 0.08);
+    }
+
+    chessBoard[fr][fc] = '.';
+    // Promotion
+    if (piece === 'P' && tr === 0) chessBoard[tr][tc] = 'Q';
+    else if (piece === 'p' && tr === 7) chessBoard[tr][tc] = 'q';
+    else chessBoard[tr][tc] = piece;
+
+    chessMoveCountNum++;
+    chessSelected = null;
+    chessLegalMoves = [];
+
+    if (chessMoveCount) chessMoveCount.textContent = `Move: ${chessMoveCountNum}`;
+    if (chessCapturedWhite) chessCapturedWhite.textContent = `White: ${chessCapsBlack.join(' ') || 'None'}`;
+    if (chessCapturedBlack) chessCapturedBlack.textContent = `Black: ${chessCapsWhite.join(' ') || 'None'}`;
+
+    if (!chessGameOver) {
+      chessTurn = (chessTurn === 'W') ? 'B' : 'W';
+      if (chessTurn === 'B') {
+        chessStatus.textContent = "Black AI Thinking... 🧠";
+        setTimeout(makeChessAiMove, 650);
+      } else {
+        chessStatus.textContent = "White's Turn (Your Move)";
+        if (botSelfPlayToggle && botSelfPlayToggle.checked) {
+          setTimeout(makeChessAiMove, 750);
+        }
+      }
+    }
+    renderChessBoard();
+  }
+
+  function makeChessAiMove() {
+    if (chessGameOver) return;
+    const allMoves = [];
+    const isWhite = (chessTurn === 'W');
+
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const piece = chessBoard[r][c];
+        if (piece !== '.' && (isWhite ? piece === piece.toUpperCase() : piece === piece.toLowerCase())) {
+          const dests = getChessLegalMoves(r, c, chessBoard);
+          for (const [tr, tc] of dests) {
+            allMoves.push([[r, c], [tr, tc]]);
+          }
+        }
+      }
+    }
+
+    if (allMoves.length === 0) {
+      const winner = (chessTurn === 'B') ? "White" : "Black";
+      chessGameOver = true;
+      chessStatus.textContent = `🏁 Game Over! ${winner} Wins!`;
+      addXP(60, "Chess Complete");
+      renderChessBoard();
+      return;
+    }
+
+    let chosenMove = null;
+    if (chessDifficulty === 'casual') {
+      const caps = allMoves.filter(m => chessBoard[m[1][0]][m[1][1]] !== '.');
+      if (caps.length > 0 && Math.random() < 0.65) {
+        chosenMove = caps[Math.floor(Math.random() * caps.length)];
+      } else {
+        chosenMove = allMoves[Math.floor(Math.random() * allMoves.length)];
+      }
+    } else {
+      // Tactical & Master: evaluate material gain & center proximity
+      let bestScore = -999999;
+      for (const [[fr, fc], [tr, tc]] of allMoves) {
+        const target = chessBoard[tr][tc];
+        let score = 0;
+        if (target !== '.') {
+          score += (CHESS_VALS[target] || 0) * 10;
+        }
+        if (tr >= 2 && tr <= 5 && tc >= 2 && tc <= 5) score += 15;
+        score += Math.floor(Math.random() * 6);
+        if (score > bestScore) {
+          bestScore = score;
+          chosenMove = [[fr, fc], [tr, tc]];
+        }
+      }
+    }
+
+    if (chosenMove) {
+      const [[fr, fc], [tr, tc]] = chosenMove;
+      executeChessMove(fr, fc, tr, tc);
+    }
+  }
+
+  if (chessResetBtn) {
+    chessResetBtn.addEventListener('click', resetChess);
+  }
+  resetChess();
 
   // --- 10. Hardware Telemetry & Diagnostics ---
   function updateTelemetry() {

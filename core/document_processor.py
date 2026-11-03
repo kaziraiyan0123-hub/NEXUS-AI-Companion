@@ -103,19 +103,46 @@ class DocumentProcessor:
 
     @classmethod
     def _extract_image_file(cls, filepath: str, meta: Dict[str, Any]) -> Tuple[bool, str, Dict[str, Any]]:
-        """Extracts image metadata and readies it for vision analysis without corrupting text stream."""
+        """Extracts image metadata and converts to base64 for Multimodal Vision analysis."""
         dim_str = ""
+        b64_str = ""
+        mime = "image/jpeg"
         try:
             from PIL import Image
+            import io
+            import base64
             with Image.open(filepath) as img:
                 w, h = img.size
-                fmt = img.format
+                fmt = (img.format or "JPEG").upper()
                 meta["dimensions"] = f"{w}x{h}"
                 meta["image_format"] = fmt
                 dim_str = f", dimensions {w}x{h}, format {fmt}"
-        except Exception:
-            pass
-        header = f"🖼️ **Attached Image:** `{meta['filename']}` ({meta['size_kb']} KB{dim_str})\n[Image provided for visual inspection and analysis]"
+
+                # Downsample if exceedingly large to optimize inference speed and token payload
+                copy_img = img.copy()
+                copy_img.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
+                if copy_img.mode not in ("RGB", "L"):
+                    copy_img = copy_img.convert("RGB")
+                buf = io.BytesIO()
+                copy_img.save(buf, format="JPEG", quality=85)
+                b64_str = base64.b64encode(buf.getvalue()).decode("utf-8")
+                mime = "image/jpeg"
+        except Exception as e:
+            logger.debug(f"Pillow image processing error for {filepath}: {e}")
+            try:
+                import base64
+                with open(filepath, "rb") as f:
+                    b64_str = base64.b64encode(f.read()).decode("utf-8")
+                mime = "image/png" if filepath.lower().endswith(".png") else "image/jpeg"
+            except Exception:
+                pass
+
+        if b64_str:
+            meta["base64"] = b64_str
+            meta["mime_type"] = mime
+            meta["is_image"] = True
+
+        header = f"🖼️ **Attached Image:** `{meta['filename']}` ({meta['size_kb']} KB{dim_str})\n[Image provided for multimodal visual inspection and analysis]"
         return True, header, meta
 
     @classmethod

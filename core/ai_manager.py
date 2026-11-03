@@ -150,6 +150,16 @@ class AIManager:
 
         provider = self.get_provider()
         model = model_override or self.settings.get("ai_model", provider.default_model)
+
+        # Multimodal Vision Auto-Routing: If messages contain base64 image data, route to Gemini 3.5 Flash
+        has_image = any(isinstance(m, dict) and (m.get("image_data") or m.get("b64") or m.get("inline_data")) for m in messages)
+        if has_image:
+            gem_key = self.secure_storage.get_api_key("gemini")
+            if gem_key:
+                from core.providers.gemini_provider import GeminiProvider
+                provider = GeminiProvider(api_key=gem_key)
+                model = "gemini-3.5-flash"
+                logger.info("Multimodal image detected: Auto-routed to Google Gemini 3.5 Flash Vision.")
         
         # Guard against mismatch between provider and model
         if hasattr(provider, 'available_models') and model not in provider.available_models and provider.name != "fallback":

@@ -17,7 +17,7 @@ import ctypes
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional, Tuple
 
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QObject, Signal, Slot, QByteArray, QBuffer, QIODevice, Qt
 from PySide6.QtGui import QGuiApplication, QClipboard
 from PySide6.QtWidgets import QApplication
 
@@ -853,6 +853,7 @@ class ScreenVisionTool(BaseTool):
     def execute(self, params: Dict[str, Any]) -> ToolResult:
         try:
             import tempfile
+            import base64
             screen = QGuiApplication.primaryScreen()
             if not screen:
                 return ToolResult(False, "Could not acquire screen handle.")
@@ -861,9 +862,16 @@ class ScreenVisionTool(BaseTool):
             temp_path = os.path.join(tempfile.gettempdir(), f"nexus_vision_{int(time.time()*1000)}.png")
             pixmap.save(temp_path, "PNG")
 
+            # Scale screenshot to optimize speed & payload size for Multimodal Vision
+            scaled_pixmap = pixmap.scaled(1280, 720, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            byte_array = QByteArray()
+            buffer = QBuffer(byte_array)
+            buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+            scaled_pixmap.save(buffer, "JPEG", 85)
+            b64_img = base64.b64encode(byte_array.data()).decode("utf-8")
+
             active_title = "Desktop / Windows Workspace"
             try:
-                import ctypes
                 hwnd = ctypes.windll.user32.GetForegroundWindow()
                 length = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
                 buff = ctypes.create_unicode_buffer(length + 1)
@@ -872,20 +880,28 @@ class ScreenVisionTool(BaseTool):
             except Exception:
                 pass
 
-            query = params.get("query", "Summarize what is on the screen and give advice.")
+            query = params.get("query", "Inspect this screen snapshot and tell me what you see, what application is active, and how you can help me with it.")
             
             from core.ai_manager import get_ai_manager
             ai = get_ai_manager()
             prompt = (
-                f"You are NEXUS, an intelligent AI Desktop Companion with desktop vision. "
+                f"You are NEXUS, an autonomous AI Desktop Companion with full Multimodal Desktop Vision. "
                 f"The user's foreground focused window is: '{active_title}'. "
                 f"User request: '{query}'. "
-                f"Deliver a structured, charismatic, and actionable breakdown: "
-                f"1. Explain what application or workflow the user is in. "
-                f"2. Provide key insights and relevant recommendations for this task. "
-                f"3. Offer immediate helpful next steps or commands."
+                f"Carefully examine the attached screenshot of their Windows desktop. "
+                f"Deliver a clear, charismatic, and structured breakdown: "
+                f"1. **Active Application & Context**: What is currently open, what tabs/files/code are visible, and what is the user working on? "
+                f"2. **Observations & Key Details**: Read any relevant visible text, errors, diagrams, or content. "
+                f"3. **Proactive Assistance**: What specific steps, suggestions, code, or commands can you offer right now to help the user succeed?"
             )
-            analysis = ai.generate_chat([{"role": "user", "content": prompt}], persona="companion")
+            analysis = ai.generate_chat([
+                {
+                    "role": "user",
+                    "content": prompt,
+                    "image_data": b64_img,
+                    "mime_type": "image/jpeg"
+                }
+            ], persona="companion")
 
             res_msg = (
                 f"👁️ **Desktop Screen Vision Analysis**\n\n"
