@@ -636,9 +636,7 @@ class SettingsDialog(QDialog):
                 "qwen/qwen3.8-27b",
                 "openai/gpt-oss-120b",
                 "openai/gpt-oss-20b",
-                "deepseek-r1-distill-llama-70b",
-                "allam-2-7b",
-                "llama-3.1-8b-instant"
+                "allam-2-7b"
             ],
             "gemini": [
                 "gemini-4-argon",

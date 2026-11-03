@@ -126,10 +126,14 @@ window.NexusMobileAI = (function () {
       sysPrompt += ` The user's name is ${savedName}. Address them warmly.`;
     }
 
-    // 1. Prioritize Google Gemini Frontier Models (gemini-4-argon & gemini-3.8-flash)
-    const geminiKey = localStorage.getItem("nexus_gemini_key") || DEFAULT_GEMINI_KEY;
-    if (geminiKey) {
-      const geminiModels = ["gemini-4-argon", "gemini-3.8-flash", "gemini-3.5-flash"];
+    // Provider preference: Default to Groq for near-instant latency or Gemini for multimodal vision
+    const activeProvider = localStorage.getItem("nexus_active_provider") || (attachment?.isImage ? "gemini" : "groq");
+
+    // Execution helper for Gemini
+    async function tryGemini() {
+      const geminiKey = localStorage.getItem("nexus_gemini_key") || DEFAULT_GEMINI_KEY;
+      if (!geminiKey) return null;
+      const geminiModels = ["gemini-4-argon", "gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-latest"];
       for (const model of geminiModels) {
         try {
           const contents = [];
@@ -155,7 +159,7 @@ window.NexusMobileAI = (function () {
                 });
                 textContent = textContent || "Please carefully analyze this image in detail and describe what you see.";
               } else if (attachment.content) {
-                // Multi-page PDF or text/code document context
+                // Multi-page PDF, Word, PowerPoint, Excel or text/code document context
                 textContent = `[Attached Document: "${attachment.name}" (${attachment.type}, ${attachment.size} KB)]:\n\`\`\`\n${attachment.content.substring(0, 20000)}\n\`\`\`\n\n${textContent || "Please inspect, summarize, and answer questions about this attached document."}`;
               }
             }
@@ -170,7 +174,7 @@ window.NexusMobileAI = (function () {
           }
 
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 9500);
+          const timeoutId = setTimeout(() => controller.abort(), 9000);
 
           const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
             method: "POST",
@@ -192,33 +196,35 @@ window.NexusMobileAI = (function () {
             const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
             if (text && text.trim()) return text.trim();
           } else {
-            console.warn(`Gemini ${model} HTTP status ${res.status}`);
+            console.warn(`Gemini ${model} returned status ${res.status}`);
           }
         } catch (err) {
           console.warn(`Gemini ${model} attempt failed:`, err);
         }
       }
+      return null;
     }
 
-    // Prepare messages array for OpenAI-compatible APIs (Groq, OpenRouter)
-    let apiMessages = [{ role: "system", content: sysPrompt }];
-    const recentHistory = conversationMessages.slice(-10);
-    for (let i = 0; i < recentHistory.length; i++) {
-      const msg = recentHistory[i];
-      let content = msg.content;
-      if (i === recentHistory.length - 1 && attachment && attachment.content) {
-        content = `[Attached Document: "${attachment.name}" (${attachment.type})]:\n\`\`\`\n${attachment.content.substring(0, 16000)}\n\`\`\`\n\n${content || "Please inspect and summarize this document."}`;
+    // Execution helper for Groq LPU
+    async function tryGroq() {
+      const groqKey = localStorage.getItem("nexus_groq_key") || DEFAULT_GROQ_KEY;
+      if (!groqKey) return null;
+
+      let apiMessages = [{ role: "system", content: sysPrompt }];
+      const recentHistory = conversationMessages.slice(-10);
+      for (let i = 0; i < recentHistory.length; i++) {
+        const msg = recentHistory[i];
+        let content = msg.content;
+        if (i === recentHistory.length - 1 && attachment && attachment.content) {
+          content = `[Attached Document: "${attachment.name}" (${attachment.type})]:\n\`\`\`\n${attachment.content.substring(0, 16000)}\n\`\`\`\n\n${content || "Please inspect and summarize this document."}`;
+        }
+        apiMessages.push({
+          role: msg.role === "assistant" ? "assistant" : "user",
+          content: content
+        });
       }
-      apiMessages.push({
-        role: msg.role === "assistant" ? "assistant" : "user",
-        content: content
-      });
-    }
 
-    // 2. High-Speed Groq LPU API (qwen/qwen3.8-27b, openai/gpt-oss-120b, openai/gpt-oss-20b)
-    const groqKey = localStorage.getItem("nexus_groq_key") || DEFAULT_GROQ_KEY;
-    if (groqKey) {
-      const groqModels = ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "deepseek-r1-distill-llama-70b", "llama-3.1-8b-instant"];
+      const groqModels = ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "allam-2-7b"];
       for (const model of groqModels) {
         try {
           const controller = new AbortController();
@@ -249,6 +255,20 @@ window.NexusMobileAI = (function () {
           console.warn(`Groq ${model} attempt failed:`, err);
         }
       }
+      return null;
+    }
+
+    // Attempt preferred provider first with automatic instant failover
+    if (activeProvider === "gemini" || attachment?.isImage) {
+      const geminiResult = await tryGemini();
+      if (geminiResult) return geminiResult;
+      const groqResult = await tryGroq();
+      if (groqResult) return groqResult;
+    } else {
+      const groqResult = await tryGroq();
+      if (groqResult) return groqResult;
+      const geminiResult = await tryGemini();
+      if (geminiResult) return geminiResult;
     }
 
     // 3. OpenRouter Free Tier Models

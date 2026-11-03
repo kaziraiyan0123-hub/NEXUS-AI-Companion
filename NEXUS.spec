@@ -16,6 +16,8 @@ a = Analysis(
     datas=added_files,
     hiddenimports=[
         'pypdf',
+        'docx',
+        'pptx',
         'openpyxl',
         'psutil',
         'speech_recognition',

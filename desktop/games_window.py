@@ -258,36 +258,68 @@ class GamesWindow(QWidget):
         if not empty:
             return
 
-        # Check winning or blocking moves
-        move = None
-        for test_player in ["O", "X"]:
-            for idx in empty:
-                self.ttt_board[idx] = test_player
-                if self._check_ttt_winner() == test_player:
-                    move = idx
-                    self.ttt_board[idx] = ""
-                    break
-                self.ttt_board[idx] = ""
-            if move is not None:
-                break
+        # Optimal Minimax AI calculation
+        best_score = -100
+        best_move = empty[0]
 
-        if move is None:
-            # Prefer center, then corners, then random
-            if 4 in empty and random.random() < 0.7:
-                move = 4
-            else:
-                move = random.choice(empty)
+        for idx in empty:
+            self.ttt_board[idx] = "O"
+            score = self._minimax(self.ttt_board, depth=0, is_maximizing=False)
+            self.ttt_board[idx] = ""
+            if score > best_score:
+                best_score = score
+                best_move = idx
 
-        comments = [
-            "Analyzing flanking vectors...",
-            "Taking strategic coordinates!",
-            "I see what you did there!",
-            "Counter-maneuver initiated!"
+        tactical_comments = [
+            f"Minimax calculated node {best_move} (score +{best_score})! Countering!",
+            f"Occupying quadrant {best_move} to neutralize your fork vector!",
+            "Anticipating your strategy. Optimal placement locked!",
+            "Calculating game tree depth 4... Executing prime coordinate!"
         ]
-        self.ttt_dialogue_lbl.setText(f"NEXUS: '{random.choice(comments)}'")
-        self._make_ttt_move(move, "O")
+        self.ttt_dialogue_lbl.setText(f"NEXUS: '{random.choice(tactical_comments)}'")
+        self._make_ttt_move(best_move, "O")
         if not self.ttt_game_over:
             self.ttt_status_lbl.setText("Your Turn! Place X.")
+
+    def _minimax(self, board: List[str], depth: int, is_maximizing: bool) -> int:
+        winner = self._check_ttt_winner_board(board)
+        if winner == "O":
+            return 10 - depth
+        elif winner == "X":
+            return depth - 10
+        elif winner == "Tie":
+            return 0
+
+        empty = [i for i, v in enumerate(board) if v == ""]
+        if is_maximizing:
+            best = -100
+            for idx in empty:
+                board[idx] = "O"
+                val = self._minimax(board, depth + 1, False)
+                board[idx] = ""
+                best = max(best, val)
+            return best
+        else:
+            best = 100
+            for idx in empty:
+                board[idx] = "X"
+                val = self._minimax(board, depth + 1, True)
+                board[idx] = ""
+                best = min(best, val)
+            return best
+
+    def _check_ttt_winner_board(self, board: List[str]) -> Optional[str]:
+        lines = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ]
+        for a, b, c in lines:
+            if board[a] and board[a] == board[b] == board[c]:
+                return board[a]
+        if all(x != "" for x in board):
+            return "Tie"
+        return None
 
     def _toggle_ttt_self_play(self):
         self.ttt_self_play_active = self.ttt_self_play_btn.isChecked()
@@ -312,12 +344,32 @@ class GamesWindow(QWidget):
         if not empty:
             return
 
-        # Bot picks a smart or playful move for current player
-        move = random.choice(empty)
         player = self.ttt_current_player
-        self.ttt_dialogue_lbl.setText(
-            f"NEXUS (Self-Play): 'Evaluating node {move} as player {player}...' "
-        )
+        is_o = (player == "O")
+
+        # Pick optimal move with 85% probability or playful flanking move
+        if random.random() < 0.85:
+            best_score = -100 if is_o else 100
+            best_move = empty[0]
+            for idx in empty:
+                self.ttt_board[idx] = player
+                score = self._minimax(self.ttt_board, depth=0, is_maximizing=not is_o)
+                self.ttt_board[idx] = ""
+                if (is_o and score > best_score) or (not is_o and score < best_score):
+                    best_score = score
+                    best_move = idx
+            move = best_move
+        else:
+            move = random.choice(empty)
+
+        bot_name = "NEXUS-Omega (O) ⚡" if is_o else "NEXUS-Alpha (X) 🤖"
+        taunts = [
+            f"{bot_name}: 'Targeting coordinate {move}!'",
+            f"{bot_name}: 'Executing neural counter-play at index {move}!'",
+            f"{bot_name}: 'Optimizing positional utility!'",
+            f"{bot_name}: 'Calculated 100% win-or-draw path!'"
+        ]
+        self.ttt_dialogue_lbl.setText(random.choice(taunts))
         self._make_ttt_move(move, player)
 
     def _check_ttt_winner(self) -> Optional[str]:

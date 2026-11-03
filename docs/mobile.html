@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
-  <title>NEXUS — AI Companion & Mobile Command App</title>
+  <title>NEXUS — Autonomous AI Mobile Companion & Brain Lab</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#070a12">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,6 +14,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   
+  <!-- JSZip for Word (.docx), PowerPoint (.pptx), and Excel (.xlsx) Extraction -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
   <!-- Mozilla PDF.js for Client-Side Multi-Page PDF Document Reading -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
@@ -82,15 +85,28 @@
             </div>
           </div>
           <div class="bubble-content" id="bubbleText">
-            Hello! Raiyan coded me! I am NEXUS, your personal autonomous AI companion. Tap to pet me, play games, or chat!
+            Hello! Raiyan coded me! I am NEXUS, your personal autonomous AI companion. Tap to pet me, play games, or inspect documents!
           </div>
         </div>
       </div>
 
-      <!-- Living Pet Canvas -->
+      <!-- Living Pet Canvas with Dynamic Aura -->
       <div class="pet-stage" id="petStage">
-        <canvas id="mobilePetCanvas" width="360" height="280"></canvas>
+        <div class="pet-aura-glow" id="petAuraGlow"></div>
+        <canvas id="mobilePetCanvas" width="360" height="290"></canvas>
         <div class="touch-hint" id="touchHint">👆 Tap or drag to pet NEXUS (+5 XP)</div>
+      </div>
+
+      <!-- Pet Vital Meters (Energy, Mood, Bond) -->
+      <div class="pet-vitals-strip">
+        <div class="vital-item">
+          <span class="vital-label">⚡ Energy</span>
+          <div class="vital-bar"><div class="vital-fill fill-energy" id="vitalEnergy" style="width: 100%;"></div></div>
+        </div>
+        <div class="vital-item">
+          <span class="vital-label">😊 Mood: <strong id="vitalMoodText">Happy</strong></span>
+          <div class="vital-bar"><div class="vital-fill fill-mood" id="vitalMood" style="width: 95%;"></div></div>
+        </div>
       </div>
 
       <!-- Archetype Switcher & Aura Indicator -->
@@ -98,7 +114,7 @@
         <button id="skinPickerBtn" class="pill-btn skin-pill" title="Switch between 8 Character Archetypes">
           <span id="skinIcon">👑</span> <span id="skinLabel">Royal Habibi</span>
         </button>
-        <span class="aura-badge" id="auraBadge">✨ Cyber Aura</span>
+        <span class="aura-badge" id="auraBadge">✨ Royal Habibi Aura</span>
       </div>
 
       <!-- Affection Actions -->
@@ -117,6 +133,9 @@
         </button>
         <button class="action-btn" id="danceBtn">
           <span class="btn-icon">💃</span> Dance (+10 XP)
+        </button>
+        <button class="action-btn" id="restBtn">
+          <span class="btn-icon">💤</span> Rest (+Energy)
         </button>
       </div>
     </section>
@@ -148,7 +167,7 @@
         <div class="chat-messages" id="chatMessages">
           <div class="chat-msg assistant">
             <div class="msg-bubble">
-              <strong>✦ NEXUS:</strong> Raiyan coded me! I am your personal autonomous AI companion. I can answer complex questions, inspect PDF documents and code files, analyze photos, and play brain games with you!
+              <strong>✦ NEXUS:</strong> Raiyan coded me! I am your personal autonomous AI companion. I can read all your Word (.docx), PowerPoint (.pptx), PDF (.pdf), Excel (.xlsx), code, and image files! Attach any file below or tap a quick chip to begin.
             </div>
           </div>
         </div>
@@ -168,12 +187,21 @@
           </div>
         </div>
 
+        <!-- Quick Prompt Suggestion Chips -->
+        <div class="chat-chips-scroll" id="chatChipsScroll">
+          <button class="chat-chip" data-prompt="Please summarize and extract the main conclusions from the attached document.">📄 Summarize Document</button>
+          <button class="chat-chip" data-prompt="Analyze the structure, key slides, and bullet points of this presentation.">📊 Inspect Slides</button>
+          <button class="chat-chip" data-prompt="Review this code for any bugs, architectural flaws, or optimization opportunities.">💻 Debug Code</button>
+          <button class="chat-chip" data-prompt="Who made you and what are your capabilities?">✦ Who Made You?</button>
+          <button class="chat-chip" data-prompt="Tell me a witty joke and cheer me up!">⭐ Joke & Cheer</button>
+        </div>
+
         <!-- Chat Input Bar -->
         <div class="chat-input-bar">
-          <label for="docUpload" class="tool-btn" title="Attach Document, Multi-page PDF, or Code">
+          <label for="docUpload" class="tool-btn" title="Attach Document (PDF, Word, PPTX, Excel, Code)">
             📎
           </label>
-          <input type="file" id="docUpload" accept=".pdf,.txt,.py,.js,.ts,.json,.csv,.md,.html,.css,.sql,.java,.cpp,.c" style="display:none;">
+          <input type="file" id="docUpload" accept=".pdf,.docx,.doc,.pptx,.ppt,.xlsx,.xls,.csv,.tsv,.txt,.md,.rtf,.py,.js,.ts,.html,.css,.json,.xml,.yaml,.yml,.sql,.java,.cpp,.c,*/*" style="display:none;">
 
           <label for="cameraUpload" class="tool-btn" title="Capture Camera Photo for Multimodal Vision">
             📷
@@ -209,7 +237,7 @@
         <div class="self-play-banner">
           <div class="self-play-info">
             <span class="self-play-title">🤖 Autonomous Bot Self-Play</span>
-            <span class="self-play-sub">Bot plays games by itself & earns idle XP!</span>
+            <span class="self-play-sub">Bot plays games by itself with AI & earns idle XP!</span>
           </div>
           <label class="switch">
             <input type="checkbox" id="botSelfPlayToggle">
@@ -217,12 +245,30 @@
           </label>
         </div>
 
-        <!-- Game 1: Tic-Tac-Toe -->
+        <!-- Game 1: Tic-Tac-Toe (With Minimax AI & Difficulty) -->
         <div class="game-card" id="gameTttSection">
           <div class="game-card-header">
-            <span class="game-status" id="tttStatus">Your turn! Place X.</span>
+            <div class="ttt-header-left">
+              <span class="game-status" id="tttStatus">Your turn! Place X.</span>
+              <div class="ttt-scoreboard" id="tttScoreboard">
+                <span>👤 You: <strong id="scorePlayer">0</strong></span>
+                <span>🤖 Bot: <strong id="scoreBot">0</strong></span>
+                <span>🤝 Draws: <strong id="scoreDraw">0</strong></span>
+              </div>
+            </div>
             <button class="game-action-btn" id="tttResetBtn">🔄 Reset</button>
           </div>
+
+          <!-- Difficulty Selector -->
+          <div class="difficulty-bar">
+            <span class="diff-label">AI Difficulty:</span>
+            <div class="diff-pills">
+              <button class="diff-pill" data-diff="casual">Casual</button>
+              <button class="diff-pill" data-diff="tactical">Tactical</button>
+              <button class="diff-pill active" data-diff="grandmaster">Grandmaster (Minimax)</button>
+            </div>
+          </div>
+
           <div class="ttt-grid" id="tttGrid">
             <!-- 9 Tic Tac Toe cells -->
             <button class="ttt-cell" data-idx="0"></button>
@@ -236,7 +282,7 @@
             <button class="ttt-cell" data-idx="8"></button>
           </div>
           <div class="game-dialogue" id="tttDialogue">
-            NEXUS: "Let's see if your strategy can bypass my neural heuristics!"
+            NEXUS: "Minimax game tree loaded. Let's see if you can penetrate my defenses!"
           </div>
         </div>
 
@@ -260,10 +306,14 @@
         <!-- Game 3: AI Brain Trivia Quiz -->
         <div class="game-card" id="gameTriviaSection" style="display:none;">
           <div class="game-card-header">
-            <span class="game-status" id="triviaStatus">Answer correctly to earn +20 XP!</span>
+            <div class="trivia-header-group">
+              <span class="game-status" id="triviaStatus">Answer correctly to earn +20 XP!</span>
+              <span class="streak-badge" id="triviaStreak">🔥 Streak: 0</span>
+            </div>
             <button class="game-action-btn" id="triviaNextBtn">⏭️ Next</button>
           </div>
           <div class="trivia-box">
+            <div class="trivia-category-pill" id="triviaCategory">Science & Space</div>
             <div class="trivia-question" id="triviaQuestion">Question Loading...</div>
             <div class="trivia-options" id="triviaOptions">
               <!-- 4 trivia option buttons -->
@@ -318,7 +368,7 @@
           <div class="unlock-icon">🧠</div>
           <div class="unlock-details">
             <div class="unlock-title">Level 3 • Cyber Sage (60 XP)</div>
-            <div class="unlock-desc">Unlocks Memory Matrix Brain Game & Quantum Fox Archetype</div>
+            <div class="unlock-desc">Unlocks Memory Matrix Brain Game & Quantum Kitsune Archetype</div>
           </div>
           <span class="unlock-tag locked" id="tagLvl3">LOCKED (60 XP)</span>
         </div>
@@ -385,13 +435,13 @@
         <div class="settings-group-card">
           <h3 class="group-title">⚡ AI Frontier Engine</h3>
           <p class="settings-subtext">
-            NEXUS comes pre-configured with Google Gemini (4 Argon & 3.8 Flash), Groq LPU (Qwen 3.8), and offline intelligence.
+            NEXUS comes pre-configured with Google Gemini (4 Argon & 3.8 Flash), Groq LPU (Qwen 3.8 & GPT-OSS 120B), and local intelligence.
           </p>
 
           <label class="settings-label">Active Provider:</label>
           <select id="settingProviderSelect" class="settings-input">
+            <option value="groq">Groq Cloud (Qwen 3.8 27B & GPT-OSS 120B - Blazing Fast)</option>
             <option value="gemini">Google Gemini (Gemini 4 Argon & 3.8 Flash)</option>
-            <option value="groq">Groq Cloud (Qwen 3.8 27B & GPT-OSS 120B)</option>
             <option value="openrouter">OpenRouter Free Community Tier</option>
           </select>
 

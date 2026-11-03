@@ -842,7 +842,7 @@ class AdvancedChatWindow(QWidget):
             self,
             "Attach Files to Conversation",
             "",
-            "Supported Files (*.pdf *.docx *.txt *.py *.json *.csv *.xlsx *.png *.jpg *.jpeg);;All Files (*.*)"
+            "Documents & Files (*.pdf *.docx *.doc *.pptx *.ppt *.xlsx *.xls *.txt *.csv *.md *.rtf *.py *.js *.ts *.html *.css *.json *.xml *.yaml *.sql *.png *.jpg *.jpeg *.webp);;All Files (*.*)"
         )
         if files:
             for f in files:

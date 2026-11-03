@@ -186,7 +186,7 @@ class TestNeuralVoiceAndFreeModels(unittest.TestCase):
         self.assertEqual(groq.name, "groq")
         self.assertIn("qwen/qwen3.8-27b", groq.available_models)
         self.assertIn("openai/gpt-oss-120b", groq.available_models)
-        self.assertIn("deepseek-r1-distill-llama-70b", groq.available_models)
+        self.assertIn("allam-2-7b", groq.available_models)
 
         # OpenRouter Free
         openr = OpenRouterProvider()

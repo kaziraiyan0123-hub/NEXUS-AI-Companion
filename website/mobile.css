@@ -1059,3 +1059,182 @@ input:checked + .slider:before { transform: translateX(20px); }
 }
 .skin-card-header { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; }
 .skin-card-desc { font-size: 10px; color: #94a3b8; }
+
+/* ─── Vitals Strip & Pet Aura ─── */
+.pet-aura-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.18) 0%, rgba(56, 189, 248, 0.08) 50%, transparent 75%);
+  filter: blur(24px);
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.5s ease;
+  animation: auraPulse 4s ease-in-out infinite alternate;
+}
+
+@keyframes auraPulse {
+  0% { transform: translate(-50%, -50%) scale(0.92); opacity: 0.6; }
+  100% { transform: translate(-50%, -50%) scale(1.08); opacity: 0.95; }
+}
+
+.pet-vitals-strip {
+  display: flex;
+  gap: 10px;
+  padding: 6px 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  margin: 4px 6px 6px 6px;
+}
+.vital-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.vital-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  display: flex;
+  justify-content: space-between;
+}
+.vital-label strong {
+  color: #38bdf8;
+  font-weight: 700;
+}
+.vital-bar {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.vital-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.4s ease, background 0.4s ease;
+}
+.fill-energy {
+  background: linear-gradient(90deg, #f59e0b, #eab308);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+.fill-mood {
+  background: linear-gradient(90deg, #ec4899, #f43f5e);
+  box-shadow: 0 0 8px rgba(236, 72, 153, 0.5);
+}
+
+/* ─── Chat Suggestion Chips ─── */
+.chat-chips-scroll {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 6px 8px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  background: rgba(10, 15, 29, 0.75);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.chat-chips-scroll::-webkit-scrollbar {
+  display: none;
+}
+.chat-chip {
+  flex-shrink: 0;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 14px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #bae6fd;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.chat-chip:active {
+  background: rgba(56, 189, 248, 0.25);
+  transform: scale(0.96);
+  border-color: #38bdf8;
+}
+
+/* ─── Tic-Tac-Toe Header, Scoreboard & AI Difficulty ─── */
+.ttt-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ttt-scoreboard {
+  display: flex;
+  gap: 8px;
+  font-size: 10.5px;
+  color: #94a3b8;
+}
+.ttt-scoreboard strong {
+  color: #f1f5f9;
+}
+.difficulty-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 6px 0 10px 0;
+  padding: 4px 8px;
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.diff-label {
+  font-size: 10.5px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+.diff-pills {
+  display: flex;
+  gap: 4px;
+}
+.diff-pill {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.diff-pill.active {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+/* ─── Trivia Streaks & Categories ─── */
+.trivia-header-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.streak-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #f59e0b;
+}
+.trivia-category-pill {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #a78bfa;
+  background: rgba(167, 139, 250, 0.15);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 8px;
+  padding: 2px 7px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+

@@ -1,22 +1,27 @@
 """
-NEXUS Document & File Processing Engine
+NEXUS Document & File Processing Engine v3.1
 Extracts full text, structured data, and code from attached files:
-- PDF documents (page-by-page extraction via pypdf / QtPdf fallback)
-- Text & Markdown documents (.txt, .md, .rtf, .log)
-- Code files (.py, .js, .ts, .html, .css, .json, .xml, .yaml, .sql, etc.)
-- Spreadsheets (.csv, .xlsx)
+- Word Documents (.docx, .doc) via python-docx with zipfile/XML fallback
+- PowerPoint Presentations (.pptx, .ppt) via python-pptx with zipfile/XML fallback
+- PDF documents (.pdf) via pypdf with QtPdf fallback
+- Excel Spreadsheets (.xlsx, .xlsm, .csv, .tsv) via openpyxl with XML fallback
+- Source Code (.py, .js, .ts, .html, .css, .json, .xml, .yaml, .sql, .java, .cpp, .c, etc.)
+- Text & Markdown (.txt, .md, .rtf, .log, .ini, .cfg)
 Injects rich, contextualized document data into AI prompts so the companion
 understands attached files completely and delivers 100% accurate answers.
 """
 import os
+import re
+import zipfile
 import logging
+import xml.etree.ElementTree as ET
 from typing import Tuple, Dict, Any, List, Optional
 
 logger = logging.getLogger("NEXUS.DocumentProcessor")
 
 
 class DocumentProcessor:
-    """Intelligent document content extractor for NEXUS."""
+    """Intelligent multi-format document content extractor for NEXUS."""
 
     MAX_CHARS_PER_FILE = 65000  # ~15,000 to 18,000 words per document
 
@@ -42,22 +47,32 @@ class DocumentProcessor:
             "file_type": "Unknown"
         }
 
-        # 1. PDF Documents
-        if ext == ".pdf":
+        # 1. Word Documents (.docx, .doc)
+        if ext in (".docx", ".doc"):
+            meta["file_type"] = "Word Document"
+            return cls._extract_docx(filepath, meta)
+
+        # 2. PowerPoint Presentations (.pptx, .ppt)
+        elif ext in (".pptx", ".ppt"):
+            meta["file_type"] = "PowerPoint Presentation"
+            return cls._extract_pptx(filepath, meta)
+
+        # 3. PDF Documents (.pdf)
+        elif ext == ".pdf":
             meta["file_type"] = "PDF Document"
             return cls._extract_pdf(filepath, meta)
 
-        # 2. Excel Spreadsheets
+        # 4. Excel Spreadsheets (.xlsx, .xlsm)
         elif ext in (".xlsx", ".xlsm"):
             meta["file_type"] = "Excel Spreadsheet"
             return cls._extract_excel(filepath, meta)
 
-        # 3. CSV / TSV tabular data
+        # 5. CSV / TSV tabular data
         elif ext in (".csv", ".tsv"):
             meta["file_type"] = "Tabular Data (CSV)"
             return cls._extract_text_file(filepath, meta, code_fence="csv")
 
-        # 4. Source Code and Structured Formats
+        # 6. Source Code and Structured Formats
         elif ext in (
             ".py", ".js", ".ts", ".jsx", ".tsx", ".html", ".css", ".scss",
             ".json", ".xml", ".yaml", ".yml", ".sql", ".sh", ".bat", ".ps1",
@@ -71,15 +86,148 @@ class DocumentProcessor:
                 lang = "powershell" if lang == "ps1" else "batch"
             return cls._extract_text_file(filepath, meta, code_fence=lang)
 
-        # 5. Plain Text, Markdown, Logs
-        elif ext in (".txt", ".md", ".markdown", ".rst", ".log", ".ini", ".cfg", ".env"):
+        # 7. Plain Text, Markdown, Logs, Rich Text
+        elif ext in (".txt", ".md", ".markdown", ".rst", ".log", ".ini", ".cfg", ".env", ".rtf"):
             meta["file_type"] = "Text Document"
             return cls._extract_text_file(filepath, meta)
 
-        # 6. Fallback generic text attempt
+        # 8. Fallback generic text attempt
         else:
             meta["file_type"] = "Document"
             return cls._extract_text_file(filepath, meta)
+
+    @classmethod
+    def _extract_docx(cls, filepath: str, meta: Dict[str, Any]) -> Tuple[bool, str, Dict[str, Any]]:
+        """Extracts text from Word documents (.docx) using python-docx with zipfile/XML fallback."""
+        paragraphs = []
+
+        # Layer 1: python-docx library
+        try:
+            import docx
+            doc = docx.Document(filepath)
+            for p in doc.paragraphs:
+                txt = p.text.strip()
+                if txt:
+                    paragraphs.append(txt)
+            for table in doc.tables:
+                for row in table.rows:
+                    row_txt = [c.text.strip() for c in row.cells if c.text.strip()]
+                    if row_txt:
+                        paragraphs.append(" | ".join(row_txt))
+        except Exception as e:
+            logger.debug(f"python-docx read failed for {filepath}: {e}, trying zipfile XML fallback...")
+
+        # Layer 2: Standard library zipfile + XML parser (100% dependency-free)
+        if not paragraphs and filepath.lower().endswith(".docx"):
+            try:
+                with zipfile.ZipFile(filepath) as z:
+                    if "word/document.xml" in z.namelist():
+                        xml_bytes = z.read("word/document.xml")
+                        tree = ET.fromstring(xml_bytes)
+                        for p_elem in tree.iter():
+                            if p_elem.tag.endswith("}p"):
+                                texts = [node.text for node in p_elem.iter() if node.tag.endswith("}t") and node.text]
+                                if texts:
+                                    paragraphs.append("".join(texts).strip())
+            except Exception as e2:
+                logger.debug(f"zipfile XML extraction failed for {filepath}: {e2}")
+
+        # Layer 3: Legacy .doc string extraction
+        if not paragraphs:
+            try:
+                with open(filepath, "rb") as f:
+                    raw_bytes = f.read()
+                # Extract ASCII/UTF-8 words (sequences of printable chars >= 4)
+                words = re.findall(b"[\x20-\x7E\t\r\n]{4,}", raw_bytes)
+                extracted_str = "\n".join([w.decode("latin1", errors="ignore").strip() for w in words[:300]])
+                if len(extracted_str.strip()) > 50:
+                    paragraphs.append(extracted_str.strip())
+            except Exception as e3:
+                logger.debug(f"Legacy .doc extraction failed: {e3}")
+
+        if not paragraphs:
+            return False, f"Could not extract readable text from Word document '{meta['filename']}'.", meta
+
+        full_text = "\n\n".join(paragraphs)
+        truncated = False
+        if len(full_text) > cls.MAX_CHARS_PER_FILE:
+            full_text = full_text[:cls.MAX_CHARS_PER_FILE] + f"\n\n[... Truncated for performance. Document size: {meta['size_kb']} KB ...]"
+            truncated = True
+
+        words_count = len(full_text.split())
+        meta["paragraph_count"] = len(paragraphs)
+        meta["word_count"] = words_count
+        meta["truncated"] = truncated
+
+        header = f"📄 **Word Document:** `{meta['filename']}` ({meta['size_kb']} KB, {len(paragraphs)} paragraphs, ~{words_count} words)\n\n"
+        return True, header + full_text, meta
+
+    @classmethod
+    def _extract_pptx(cls, filepath: str, meta: Dict[str, Any]) -> Tuple[bool, str, Dict[str, Any]]:
+        """Extracts slides and notes from PowerPoint presentations (.pptx) with zipfile fallback."""
+        slides_text = []
+
+        # Layer 1: python-pptx library
+        try:
+            import pptx
+            prs = pptx.Presentation(filepath)
+            for idx, slide in enumerate(prs.slides):
+                slide_parts = [f"--- Slide {idx + 1} ---"]
+                for shape in slide.shapes:
+                    if shape.has_text_frame:
+                        for paragraph in shape.text_frame.paragraphs:
+                            t = paragraph.text.strip()
+                            if t:
+                                slide_parts.append(t)
+                if len(slide_parts) > 1:
+                    slides_text.append("\n".join(slide_parts))
+        except Exception as e:
+            logger.debug(f"python-pptx read failed for {filepath}: {e}, trying zipfile XML fallback...")
+
+        # Layer 2: Standard library zipfile + XML parser (100% dependency-free)
+        if not slides_text and filepath.lower().endswith(".pptx"):
+            try:
+                with zipfile.ZipFile(filepath) as z:
+                    slide_files = [f for f in z.namelist() if f.startswith("ppt/slides/slide") and f.endswith(".xml")]
+                    slide_files.sort(key=lambda s: int("".join(filter(str.isdigit, s)) or 0))
+
+                    for idx, sfile in enumerate(slide_files):
+                        xml_bytes = z.read(sfile)
+                        tree = ET.fromstring(xml_bytes)
+                        texts = [node.text for node in tree.iter() if node.tag.endswith("}t") and node.text]
+                        if texts:
+                            slides_text.append(f"--- Slide {idx + 1} ---\n" + "\n".join(texts))
+            except Exception as e2:
+                logger.debug(f"zipfile PPTX extraction failed for {filepath}: {e2}")
+
+        # Layer 3: Legacy .ppt string extraction
+        if not slides_text:
+            try:
+                with open(filepath, "rb") as f:
+                    raw_bytes = f.read()
+                words = re.findall(b"[\x20-\x7E\t\r\n]{4,}", raw_bytes)
+                extracted_str = "\n".join([w.decode("latin1", errors="ignore").strip() for w in words[:400]])
+                if len(extracted_str.strip()) > 50:
+                    slides_text.append(extracted_str.strip())
+            except Exception as e3:
+                logger.debug(f"Legacy .ppt extraction failed: {e3}")
+
+        if not slides_text:
+            return False, f"Could not extract readable text from PowerPoint presentation '{meta['filename']}'.", meta
+
+        full_text = "\n\n".join(slides_text)
+        truncated = False
+        if len(full_text) > cls.MAX_CHARS_PER_FILE:
+            full_text = full_text[:cls.MAX_CHARS_PER_FILE] + f"\n\n[... Truncated for performance. Presentation size: {meta['size_kb']} KB ...]"
+            truncated = True
+
+        words_count = len(full_text.split())
+        meta["slide_count"] = len(slides_text)
+        meta["word_count"] = words_count
+        meta["truncated"] = truncated
+
+        header = f"📊 **PowerPoint Presentation:** `{meta['filename']}` ({meta['size_kb']} KB, {len(slides_text)} slides, ~{words_count} words)\n\n"
+        return True, header + full_text, meta
 
     @classmethod
     def _extract_pdf(cls, filepath: str, meta: Dict[str, Any]) -> Tuple[bool, str, Dict[str, Any]]:
@@ -98,7 +246,6 @@ class DocumentProcessor:
                 page_text = page.extract_text() or ""
                 if page_text.strip():
                     text_pages.append(f"--- Page {idx + 1} ---\n{page_text.strip()}")
-
         except Exception as e:
             logger.debug(f"pypdf extraction error on {filepath}: {e}, trying QtPdf...")
 
@@ -133,12 +280,12 @@ class DocumentProcessor:
         meta["word_count"] = words
         meta["truncated"] = truncated
 
-        header = f"📄 **PDF Document:** `{meta['filename']}` ({meta['size_kb']} KB, {total_pages} pages, ~{words} words)\n\n"
+        header = f"📑 **PDF Document:** `{meta['filename']}` ({meta['size_kb']} KB, {total_pages} pages, ~{words} words)\n\n"
         return True, header + full_text, meta
 
     @classmethod
     def _extract_excel(cls, filepath: str, meta: Dict[str, Any]) -> Tuple[bool, str, Dict[str, Any]]:
-        """Extracts sheets and tabular rows from Excel files."""
+        """Extracts sheets and tabular rows from Excel files with XML fallback."""
         try:
             import openpyxl
             wb = openpyxl.load_workbook(filepath, read_only=True, data_only=True)
@@ -161,8 +308,43 @@ class DocumentProcessor:
             full_text = "\n".join(output_parts)
             return True, full_text, meta
         except Exception as e:
-            logger.warning(f"Failed to read Excel file {filepath}: {e}")
-            return False, f"Could not read Excel file '{meta['filename']}': {e}", meta
+            logger.debug(f"openpyxl failed for {filepath}: {e}, trying zipfile XML fallback...")
+
+        # Fallback to zipfile XML for .xlsx
+        try:
+            with zipfile.ZipFile(filepath) as z:
+                shared_strings = []
+                if "xl/sharedStrings.xml" in z.namelist():
+                    tree = ET.fromstring(z.read("xl/sharedStrings.xml"))
+                    for si in tree.iter():
+                        if si.tag.endswith("}t") and si.text:
+                            shared_strings.append(si.text.strip())
+
+                output_parts = [f"📊 **Excel Workbook:** `{meta['filename']}` ({meta['size_kb']} KB)"]
+                sheet_files = [f for f in z.namelist() if f.startswith("xl/worksheets/sheet") and f.endswith(".xml")]
+                for idx, sfile in enumerate(sheet_files[:5]):
+                    output_parts.append(f"\n### Sheet {idx + 1}")
+                    s_tree = ET.fromstring(z.read(sfile))
+                    row_texts = []
+                    for row in s_tree.iter():
+                        if row.tag.endswith("}row"):
+                            cell_vals = []
+                            for c in row.iter():
+                                if c.tag.endswith("}v") and c.text:
+                                    val = c.text
+                                    if val.isdigit() and int(val) < len(shared_strings):
+                                        cell_vals.append(shared_strings[int(val)])
+                                    else:
+                                        cell_vals.append(val)
+                            if cell_vals:
+                                row_texts.append(" | ".join(cell_vals))
+                    output_parts.append("\n".join(row_texts[:80]))
+
+                full_text = "\n".join(output_parts)
+                return True, full_text, meta
+        except Exception as e2:
+            logger.warning(f"Failed to read Excel file {filepath}: {e2}")
+            return False, f"Could not read Excel file '{meta['filename']}': {e2}", meta
 
     @classmethod
     def _extract_text_file(

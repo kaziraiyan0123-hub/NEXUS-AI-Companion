@@ -106,5 +106,37 @@ class TestDocumentProcessor(unittest.TestCase):
         self.assertIn("Please analyze, summarize, and explain", full_prompt)
         self.assertIn("Q3 Financial Analysis", full_prompt)
 
+    def test_08_extract_docx(self):
+        """Verify Word (.docx) document extraction."""
+        import docx
+        docx_path = os.path.join(self.temp_dir.name, "sample.docx")
+        doc = docx.Document()
+        doc.add_heading("NEXUS DOCX Heading", 0)
+        doc.add_paragraph("Paragraph 1: Raiyan coded me!")
+        doc.save(docx_path)
+
+        success, text, meta = DocumentProcessor.extract_file_content(docx_path)
+        self.assertTrue(success)
+        self.assertEqual(meta["file_type"], "Word Document")
+        self.assertIn("Raiyan coded me!", text)
+        self.assertGreaterEqual(meta["paragraph_count"], 2)
+
+    def test_09_extract_pptx(self):
+        """Verify PowerPoint (.pptx) presentation extraction."""
+        import pptx
+        pptx_path = os.path.join(self.temp_dir.name, "sample.pptx")
+        prs = pptx.Presentation()
+        slide = prs.slides.add_slide(prs.slide_layouts[0])
+        slide.shapes.title.text = "Presentation Title"
+        slide.placeholders[1].text = "Slide bullet point details"
+        prs.save(pptx_path)
+
+        success, text, meta = DocumentProcessor.extract_file_content(pptx_path)
+        self.assertTrue(success)
+        self.assertEqual(meta["file_type"], "PowerPoint Presentation")
+        self.assertIn("Presentation Title", text)
+        self.assertIn("Slide bullet point details", text)
+        self.assertEqual(meta["slide_count"], 1)
+
 if __name__ == "__main__":
     unittest.main()
